@@ -49,6 +49,7 @@ FunctionPass *createFalkorHWPFFixPass();
 FunctionPass *createFalkorMarkStridedAccessesPass();
 FunctionPass *createAArch64BranchTargetsPass();
 
+
 FunctionPass *createAArch64CleanupLocalDynamicTLSPass();
 
 FunctionPass *createAArch64CollectLOHPass();
@@ -57,6 +58,7 @@ createAArch64InstructionSelector(const AArch64TargetMachine &,
                                  AArch64Subtarget &, AArch64RegisterBankInfo &);
 FunctionPass *createAArch64PreLegalizeCombiner();
 FunctionPass *createAArch64StackTaggingPass();
+FunctionPass *createAArch64IKEAPass();
 
 void initializeAArch64A53Fix835769Pass(PassRegistry&);
 void initializeAArch64A57FPLoadBalancingPass(PassRegistry&);
@@ -80,6 +82,7 @@ void initializeFalkorHWPFFixPass(PassRegistry&);
 void initializeFalkorMarkStridedAccessesLegacyPass(PassRegistry&);
 void initializeLDTLSCleanupPass(PassRegistry&);
 void initializeAArch64StackTaggingPass(PassRegistry&);
+void initializeAArch64IKEAPass(PassRegistry&);
 } // end namespace llvm
 
 #endif
