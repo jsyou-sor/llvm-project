@@ -1,16 +1,5 @@
-//<<<<<<< HEAD
-// #include ""
-// AAA
-//=======
 #include "AArch64.h"
 #include "AArch64Subtarget.h"
-//#include "llvm/CodeGen/MachineOperand.h"
-//#include "llvm/CodeGen/MachineBasicBlock.h"
-//#include "llvm/CodeGen/MachineFunctionPass.h"
-//#include "llvm/CodeGen/MachineRegisterInfo.h"
-//#include "llvm/CodeGen/MachineInstrBuilder.h"
-//#include "llvm/CodeGen/MachineInstr.h"
-
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/MachineModuleInfo.h"
@@ -49,16 +38,12 @@ namespace {
       initializeAArch64IKEAPass(*PassRegistry::getPassRegistry());
     }
 
-    //const TargetInstrInfo   *TII;
-    //const AArch64Subtarget  *STI;
-    //MachineRegisterInfo     *MRI;
     int count = 0;
 
-    // PARTS
     const TargetMachine *TM             = nullptr;
     const AArch64Subtarget *STI         = nullptr;
     const AArch64InstrInfo *TII         = nullptr;
-    const AArch64RegisterInfo *TRI     = nullptr;
+    const AArch64RegisterInfo *TRI      = nullptr;
 
     // Add defined functions here (like .h)
 
@@ -205,6 +190,9 @@ bool is32bit_reg(unsigned reg) {
   }
 }
 
+bool instrumentLoad(const MachineInstr &MI) {
+}
+
 bool AArch64IKEA::runOnMachineFunction(MachineFunction &Fn) {
 
   dbgs() << getPassName() << ", function " << Fn.getName() << "\n";
@@ -230,34 +218,62 @@ bool AArch64IKEA::runOnMachineFunction(MachineFunction &Fn) {
       const auto &DL = MI.getDebugLoc();
       unsigned src = 0;
 
+      // Load Instrumentation
       if (isLoad(MI)) {
         if (MI.getNumOperands() == 3) {
           src = MI.getOperand(1).getReg();
-
-          if (src != SP && src != FP) {
+          if (src != SP && src != FP)
             BuildMI(MFI, MBBI, DL, TII->get(AArch64::BFMXri), X15).addReg(X15).addReg(src).addImm(0).addImm(55);
-            
-            // Change address operand to X15 (if MTE is available)
-            
-            // unsigned idx = 0;
-            //  for (unsigned i = 0; i < MI.getNumOperands(); i++)
-            //    if (!MI.getOperand(i).isReg())
-            //      idx = i - 1;
-            //  MI.getOperand(idx).ChangeToRegister(AArch64::X15, 1, 0, 0, 0, 0, 0);
+          else {
+            // TODO: Instrument for SP
+          }
+        }
+        if (MI.getNumOperands() == 4) {
+          src = MI.getOperand(2).getReg();
+          if (src != SP && src != FP)
+            BuildMI(MFI, MBBI, DL, TII->get(AArch64::BFMXri), X15).addReg(X15).addReg(src).addImm(0).addImm(55);
+          else {
+            // TODO: Instrument for SP
+          }
+        }
+        Modified = true;
+      }
+
+      // Store instrumentation
+      if (isStore(MI)) {
+        if (MI.getNumOperands() == 3) {
+          src = MI.getOperand(1).getReg();
+          if (src != SP && src != FP) {
+            // TODO: Why add LDR for STR instrumentation?
+            BuildMI(MFI, MBBI, DL, TII->get(AArch64::LDRXui), AArch64::XZR).addReg(src).addImm(0);
+            BuildMI(MFI, MBBI, DL, TII->get(AArch64::BFMXri), X15).addReg(X15).addReg(src).addImm(0).addImm(55);
           }
           else {
-            // Have to move SP to GPR(X14) first
+            // TODO: instrument for SP
           }
         }
         if (MI.getNumOperands() == 4) {
           src = MI.getOperand(2).getReg();
           if (src != SP && src != FP) {
-            MI.dump();
+            BuildMI(MFI, MBBI, DL, TII->get(AArch64::LDRXui), AArch64::XZR).addReg(src).addImm(0);                
             BuildMI(MFI, MBBI, DL, TII->get(AArch64::BFMXri), X15).addReg(X15).addReg(src).addImm(0).addImm(55);
           }
+          else {
+            // TODO: instrument for SP
+          }
         }
-        Modified = true;
       }
+
+      // Branch instrumentation
+      if (MI.getOpcode() == AArch64::BR || MI.getOpcode() == AArch64::BLR) {
+        src = MI.getOperand(0).getReg();
+        BuildMI(MFI, MBBI, DL, TII->get(AArch64::BFMXri), X15).addReg(X15).addReg(src).addImm(0).addImm(55);
+        // FIXME: This load might not work when running on board
+        // FIXME: Use second BuildMI for overhead evaluation
+        //BuildMI(MFI, MBBI, DL, TII->get(AArch64::LDRXui), AArch64::XZR).addReg(X15).addImm(0);
+        BuildMI(MFI, MBBI, DL, TII->get(AArch64::LDRXui), AArch64::XZR).addReg(src).addImm(0);
+      }
+
       MBBI = NMBBI;
     }
   }
