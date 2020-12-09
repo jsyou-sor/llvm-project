@@ -38,6 +38,10 @@ namespace llvm {
 
 #define AARCH64_IKEAPASS_NAME "AArch64 IKEA Pass"
 
+#define X15   AArch64::X15
+#define SP    AArch64::SP
+#define FP    AArch64::FP
+
 namespace {
   struct AArch64IKEA : public MachineFunctionPass {
     static char ID;
@@ -210,72 +214,46 @@ bool AArch64IKEA::runOnMachineFunction(MachineFunction &Fn) {
   TRI = STI->getRegisterInfo();
   bool Modified = false;
 
-  Fn.dump();
+  //Fn.dump();
 
   if (Fn.getName().compare(StringRef("__sfputc_r")) == 0)
     return Modified;
 
   for (MachineBasicBlock &MFI : Fn) {
+    
     MachineBasicBlock::iterator MBBI = MFI.begin(), MBBIE = MFI.end();
+    
     while (MBBI != MBBIE) {
-      MachineBasicBlock::iterator NMBBI = std::next(MBBI);
+
+      MachineBasicBlock::iterator NMBBI = std::next(MBBI); 
       MachineInstr &MI = *MBBI;
+      const auto &DL = MI.getDebugLoc();
+      unsigned src = 0;
 
       if (isLoad(MI)) {
-
-        const auto &DL = MI.getDebugLoc();
-
-        //if (MI.getOperand(1).isReg()) {
         if (MI.getNumOperands() == 3) {
-          unsigned mod = MI.getOperand(1).getReg();
+          src = MI.getOperand(1).getReg();
 
-          /* TODO:
-           * [0] Where to add the pass
-           *      - addPass@PreEmitPass   => gets all the load (including SP referenced ones)
-           * 
-           * [1] Reserve X15 register
-           *      - Reserved.set(AArch64::X15) && addPass@PreRegAlloc => error
-           *      - markSuperRegs(Reserved, AArch64::X15) @ AArch64RegisterInfo.cpp
-                 * 
-                 * [2] Get immediates also
-                 *      - Or we can check/verify immediates large enough to change the tag bits are not added
-                 *        during memory access addressing
-                 * 
-                 * [3] Change ADD to MOV && MOV only bottom 60 bits
-                 *      - EXTR X15, addr, X15, 60
-                 *      - EXTR X15, X15, X15, 4     == ROR X15, X15, 4 (after compilation)
-                 * 
-                 * [4] Exchange LD memory operand to X15 (no need for the overhead experiment)
-                 *      - ARMv8-A Addressing Modes
-                 *          + Simple:       LDR X0, [X1]
-                 *          + Offset:       LDR X0, [X1, #12]
-                 *          + Pre-index:    LDR X0, [X1, #12]!      // X1 = X1 + 12 before memory access
-                 *          + Post-index:   LDR X0, [X1], #12       // X1 = X1 + 12 after memory access
-                 *          + LD/ST Pair:   LDP X0, X1, [X2]        // X0 = [X2], X1 = [X2 + 8]
-                 *                          LDP X0, X1, [SP], #16   // X0 = [SP], X1 = [SP + 8], SP = SP + 16
-                 *
-                 * [5] Tag stack at function beginning
-                 * [6] Instrument memory access via SP
-                 *      - What about memory access via FP(X29)?
-                 */
-
-          const MCInstrDesc extr = TII->get(AArch64ISD::EXTR);
-          if (mod != AArch64::SP) {
-
-            BuildMI(MFI, MBBI, DL, TII->get(AArch64::EXTRXrri), AArch64::X15).addReg(mod).addReg(AArch64::X15).addImm(60);
-            BuildMI(MFI, MBBI, DL, TII->get(AArch64::EXTRXrri), AArch64::X15).addReg(AArch64::X15).addReg(AArch64::X15).addImm(4);
-
-            /*
-             * Change address operand to X15 (if MTE is available)
-             * unsigned idx = 0;
-             * for (unsigned i = 0; i < MI.getNumOperands(); i++)
-             *      if (!MI.getOperand(i).isReg())
-             *          idx = i - 1;
-             *  MI.getOperand(idx).ChangeToRegister(AArch64::X15, 1, 0, 0, 0, 0, 0);
-             */
+          if (src != SP && src != FP) {
+            BuildMI(MFI, MBBI, DL, TII->get(AArch64::BFMXri), X15).addReg(X15).addReg(src).addImm(0).addImm(55);
+            
+            // Change address operand to X15 (if MTE is available)
+            
+            // unsigned idx = 0;
+            //  for (unsigned i = 0; i < MI.getNumOperands(); i++)
+            //    if (!MI.getOperand(i).isReg())
+            //      idx = i - 1;
+            //  MI.getOperand(idx).ChangeToRegister(AArch64::X15, 1, 0, 0, 0, 0, 0);
           }
           else {
             // Have to move SP to GPR(X14) first
+          }
+        }
+        if (MI.getNumOperands() == 4) {
+          src = MI.getOperand(2).getReg();
+          if (src != SP && src != FP) {
+            MI.dump();
+            BuildMI(MFI, MBBI, DL, TII->get(AArch64::BFMXri), X15).addReg(X15).addReg(src).addImm(0).addImm(55);
           }
         }
         Modified = true;
@@ -286,4 +264,3 @@ bool AArch64IKEA::runOnMachineFunction(MachineFunction &Fn) {
 
   return Modified;
 }
-//>>>>>>> 166f31090903fbf1746e32d088c322fce0189441
