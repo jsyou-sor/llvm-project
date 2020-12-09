@@ -1,7 +1,7 @@
-<<<<<<< HEAD
+//<<<<<<< HEAD
 // #include ""
 // AAA
-=======
+//=======
 #include "AArch64.h"
 #include "AArch64Subtarget.h"
 //#include "llvm/CodeGen/MachineOperand.h"
@@ -286,4 +286,4 @@ bool AArch64IKEA::runOnMachineFunction(MachineFunction &Fn) {
 
   return Modified;
 }
->>>>>>> 166f31090903fbf1746e32d088c322fce0189441
+//>>>>>>> 166f31090903fbf1746e32d088c322fce0189441
