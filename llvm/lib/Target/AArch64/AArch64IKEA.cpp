@@ -189,9 +189,42 @@ bool is32bit_reg(unsigned reg) {
     return true;
   }
 }
-
-bool instrumentLoad(const MachineInstr &MI) {
+bool isbranch(const MachineInstr &MI) {
+  const auto Opcode = MI.getOpcode();
+  switch(Opcode) {
+  default:
+    return false;
+  case AArch64::BLR:
+  case AArch64::BR:
+    return true;
+  }
 }
+/*
+bool instrumentLoad(const MachineInstr &MI) {
+  const auto &DL = MI.getDebugLoc();
+  unsigned src = 0;
+ 
+  if (MI.getNumOperands() == 3) {
+    src = MI.getOperand(1).getReg();
+    if (src != SP && src != FP)
+      BuildMI(MFI, MBBI, DL, TII->get(AArch64::BFMXri), X15).addReg(X15).addReg(src).addImm(0).addImm(55);
+    else {
+      // TODO: Instrument for SP
+    }
+  }
+  
+  if (MI.getNumOperands() == 4) {
+    src = MI.getOperand(2).getReg();
+    if (src != SP && src != FP)
+      BuildMI(MFI, MBBI, DL, TII->get(AArch64::BFMXri), X15).addReg(X15).addReg(src).addImm(0).addImm(55);
+    else {
+      // TODO: Instrument for SP
+    }
+  }
+    //Modified = true;
+  return true;
+}
+*/
 
 bool AArch64IKEA::runOnMachineFunction(MachineFunction &Fn) {
 
@@ -221,6 +254,12 @@ bool AArch64IKEA::runOnMachineFunction(MachineFunction &Fn) {
       // Load Instrumentation
       if (isLoad(MI)) {
         if (MI.getNumOperands() == 3) {
+
+          if(!MI.getOperand(1).isReg()){
+            MBBI = NMBBI;
+            continue;
+          }
+          
           src = MI.getOperand(1).getReg();
           if (src != SP && src != FP)
             BuildMI(MFI, MBBI, DL, TII->get(AArch64::BFMXri), X15).addReg(X15).addReg(src).addImm(0).addImm(55);
@@ -229,6 +268,12 @@ bool AArch64IKEA::runOnMachineFunction(MachineFunction &Fn) {
           }
         }
         if (MI.getNumOperands() == 4) {
+          
+          if(!MI.getOperand(2).isReg()){
+            MBBI = NMBBI;
+            continue;
+          }
+          
           src = MI.getOperand(2).getReg();
           if (src != SP && src != FP)
             BuildMI(MFI, MBBI, DL, TII->get(AArch64::BFMXri), X15).addReg(X15).addReg(src).addImm(0).addImm(55);
@@ -238,10 +283,21 @@ bool AArch64IKEA::runOnMachineFunction(MachineFunction &Fn) {
         }
         Modified = true;
       }
+      
+      /*
+      if (isLoad(MI))
+        Modified = instrumentLoad(MI);
+      */
 
       // Store instrumentation
       if (isStore(MI)) {
         if (MI.getNumOperands() == 3) {
+          
+          if(!MI.getOperand(1).isReg()){
+            MBBI = NMBBI;
+            continue;
+          }
+          
           src = MI.getOperand(1).getReg();
           if (src != SP && src != FP) {
             // TODO: Why add LDR for STR instrumentation?
@@ -253,6 +309,12 @@ bool AArch64IKEA::runOnMachineFunction(MachineFunction &Fn) {
           }
         }
         if (MI.getNumOperands() == 4) {
+          
+          if(!MI.getOperand(2).isReg()){
+            MBBI = NMBBI;
+            continue;
+          }
+          
           src = MI.getOperand(2).getReg();
           if (src != SP && src != FP) {
             BuildMI(MFI, MBBI, DL, TII->get(AArch64::LDRXui), AArch64::XZR).addReg(src).addImm(0);                
@@ -263,15 +325,43 @@ bool AArch64IKEA::runOnMachineFunction(MachineFunction &Fn) {
           }
         }
       }
-
-      // Branch instrumentation
-      if (MI.getOpcode() == AArch64::BR || MI.getOpcode() == AArch64::BLR) {
+      
+//--------------- CFI ---------------
+      
+      // Indirect branch instrumentation
+      if (isbranch(MI)) {
+        if(!MI.getOperand(0).isReg()){
+          MBBI = NMBBI;
+          continue;
+        }
+        
         src = MI.getOperand(0).getReg();
         BuildMI(MFI, MBBI, DL, TII->get(AArch64::BFMXri), X15).addReg(X15).addReg(src).addImm(0).addImm(55);
         // FIXME: This load might not work when running on board
         // FIXME: Use second BuildMI for overhead evaluation
         //BuildMI(MFI, MBBI, DL, TII->get(AArch64::LDRXui), AArch64::XZR).addReg(X15).addImm(0);
         BuildMI(MFI, MBBI, DL, TII->get(AArch64::LDRXui), AArch64::XZR).addReg(src).addImm(0);
+      }
+
+      //RET instrumentation
+      if (MI.getOpcode() == AArch64::RET) {
+        if(!MI.getOperand(0).isReg()){
+          MBBI = NMBBI;
+          continue;
+        }
+        
+        src = MI.getOperand(0).getReg();
+        BuildMI(MFI, MBBI, DL, TII->get(AArch64::BFMXri), X15).addReg(X15).addReg(src).addImm(0).addImm(55);
+        // FIXME: This load might not work when running on board
+        // FIXME: Use second BuildMI for overhead evaluation
+        //BuildMI(MFI, MBBI, DL, TII->get(AArch64::LDRXui), AArch64::XZR).addReg(X15).addImm(0);
+        BuildMI(MFI, MBBI, DL, TII->get(AArch64::LDRXui), AArch64::XZR).addReg(src).addImm(0);
+      }
+
+      //Indirect CALL instrumentation
+      if (MI.getOpcode() == 0) {
+        // TODO: Instrument for indirecto call        
+        assert(1);
       }
 
       MBBI = NMBBI;
