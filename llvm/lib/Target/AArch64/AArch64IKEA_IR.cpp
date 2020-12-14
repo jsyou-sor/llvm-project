@@ -1,5 +1,6 @@
 #include "llvm/ADT/Statistic.h"
 #include "llvm/IR/Function.h"
+#include "llvm/IR/Instruction.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -62,4 +63,61 @@ FunctionPass *llvm::createAArch64IKEA_IRPass() {
 
 bool AArch64IKEA_IR::runOnFunction(Function &F) {
 	dbgs() << "[IR] " << F.getName() << "\n";
+
+	if (F.getName() == "dummy_xmit") {
+		F.dump();
+		for (auto &BBI:F.getBasicBlockList()) {
+			BasicBlock *BB = &BBI;
+			for (auto &InstI:BB->getInstList()) {
+				Instruction *insn = &InstI;
+				if (GetElementPtrInst *GEP = dyn_cast<GetElementPtrInst>(insn)) {
+					dbgs() << *GEP << "\n";
+					dbgs() << *GEP->getPointerOperandType() << "\n";
+					for (auto op = GEP->idx_begin(); op != GEP->idx_end(); ++op) {}
+				}
+			}
+		}
+	}
+	
+	//F.dump();
+	for (auto arg = F.arg_begin(); arg != F.arg_end(); ++arg) {
+		//arg.dump();
+		dbgs() << *arg << "\n";
+		//dbgs() << arg->getDereferenceableBytes() << "\n";
+		//dbgs() << arg->getAttribute() << "\n";
+		//dbgs() << *arg << arg->hasByValAttr() << arg->hasByRefAttr() << "\n";
+		//dbgs() << *arg->getParamByValType() << "\n";
+		//dbgs() << *arg->getParamStructRetType() << "\n";
+		//dbgs() << *arg->getParamByRefType() << "\n";
+	}
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
