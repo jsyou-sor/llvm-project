@@ -58,7 +58,7 @@ namespace {
 INITIALIZE_PASS(AArch64IKEA, "aarch64-ikea-memory_isolation_pass", AARCH64_IKEAPASS_NAME, false, false)
 
 FunctionPass *llvm::createAArch64IKEAPass() {
-  dbgs() << "AArch64IKEAPass\n";
+  dbgs() << "[+] AArch64IKEAPass\n";
   return new AArch64IKEA();
 }
 

@@ -63,6 +63,7 @@ add_llvm_target(AArch64CodeGen
   AArch64TargetTransformInfo.cpp
   AArch64SIMDInstrOpt.cpp
   AArch64IKEA.cpp
+  AArch64IKEA_IR.cpp
 
   DEPENDS
   intrinsics_gen
