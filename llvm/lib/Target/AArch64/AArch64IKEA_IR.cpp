@@ -3,6 +3,7 @@
 #include "llvm/IR/Instruction.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/IR/Value.h"
 
 #include "AArch64.h"
 #include "AArch64Subtarget.h"
@@ -17,12 +18,13 @@
 #include "llvm/CodeGen/TargetRegisterInfo.h"
 
 #include "MCTargetDesc/AArch64AddressingModes.h"
+#include "AArch64IKEA.h"
 
 using namespace llvm;
+using namespace llvm::IKEA;
 
-#define DEBUG_TYPE "hello"
-
-STATISTIC(HelloCounter, "Counts number of functions greeted");
+//#define DEBUG_TYPE "hello"
+//STATISTIC(HelloCounter, "Counts number of functions greeted");
 
 namespace llvm {
 	void initializeAArch64IKEA_IRPass(PassRegistry &);
@@ -62,17 +64,35 @@ FunctionPass *llvm::createAArch64IKEA_IRPass() {
 }
 
 bool AArch64IKEA_IR::runOnFunction(Function &F) {
+
+	IkeaMetaData fe;	
+	fe.set_address(1, 0);
+	dbgs() << "[H] " << fe.get_address(0) << "\n";
+
 	dbgs() << "[IR] " << F.getName() << "\n";
 
 	if (F.getName() == "dummy_xmit") {
-		F.dump();
+		//F.dump();
 		for (auto &BBI:F.getBasicBlockList()) {
 			BasicBlock *BB = &BBI;
 			for (auto &InstI:BB->getInstList()) {
 				Instruction *insn = &InstI;
+				//dbgs() << *insn << "\n";
+				insn->dump();
+				//Value *v = dyn_cast<Value>(insn);
+				//dbgs() << *v << "\n";
+				for (auto op = insn->op_begin(); op != insn->op_end(); ++op) {
+					dbgs() << "[-] " << *(op->get()) << "\n";
+				}
 				if (GetElementPtrInst *GEP = dyn_cast<GetElementPtrInst>(insn)) {
-					dbgs() << *GEP << "\n";
-					dbgs() << *GEP->getPointerOperandType() << "\n";
+					//dbgs() << *GEP << "\n";
+					//dbgs() << *GEP->getPointerOperandType() << "\n";
+					for (auto arg = F.arg_begin(); arg != F.arg_end(); ++arg) {
+						Value *val = dyn_cast<Value>(arg);
+						if (val->getType() == GEP->getPointerOperandType()) {
+							dbgs() << "[+] " << *val->getType() << "\n";
+						}
+					}
 					for (auto op = GEP->idx_begin(); op != GEP->idx_end(); ++op) {}
 				}
 			}
@@ -80,9 +100,13 @@ bool AArch64IKEA_IR::runOnFunction(Function &F) {
 	}
 	
 	//F.dump();
+	/*
 	for (auto arg = F.arg_begin(); arg != F.arg_end(); ++arg) {
 		//arg.dump();
 		dbgs() << *arg << "\n";
+		Value *val = dyn_cast<Value>(arg);
+		dbgs() << *val << "\n";
+		dbgs() << *val->getType() << "\n";
 		//dbgs() << arg->getDereferenceableBytes() << "\n";
 		//dbgs() << arg->getAttribute() << "\n";
 		//dbgs() << *arg << arg->hasByValAttr() << arg->hasByRefAttr() << "\n";
@@ -90,34 +114,5 @@ bool AArch64IKEA_IR::runOnFunction(Function &F) {
 		//dbgs() << *arg->getParamStructRetType() << "\n";
 		//dbgs() << *arg->getParamByRefType() << "\n";
 	}
+	*/
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

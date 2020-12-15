@@ -449,7 +449,7 @@ void AArch64PassConfig::addIRPasses() {
   }
 
   addPass(createAArch64StackTaggingPass());
-  addPass(createAArch64IKEA_IRPass());
+  //addPass(createAArch64IKEA_IRPass());
 }
 
 // Pass Pipeline Configuration

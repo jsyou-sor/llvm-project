@@ -12,7 +12,12 @@
 
 #include "MCTargetDesc/AArch64AddressingModes.h"
 
+#include "llvm/IR/Instruction.h"
+#include "llvm/IR/Value.h"
+#include "AArch64IKEA.h"
+
 using namespace llvm;
+using namespace llvm::IKEA;
 
 #define DEBUG_TYPE "aarch64-ikea-memory_isolation_pass"
 
@@ -46,7 +51,7 @@ namespace {
     const AArch64RegisterInfo *TRI      = nullptr;
 
     // Add defined functions here (like .h)
-
+		bool runOnFunction(Function &F);
     bool runOnMachineFunction(MachineFunction &Fn) override;
     StringRef getPassName() const override {
       return AARCH64_IKEAPASS_NAME;
@@ -226,10 +231,20 @@ bool instrumentLoad(const MachineInstr &MI) {
 }
 */
 
+bool AArch64IKEA::runOnFunction(Function &F) {
+	dbgs() << "IR Pass\n";
+	dbgs() << "[IR]: " << F.getName() << "\n";
+	return false;
+}
+
+
 bool AArch64IKEA::runOnMachineFunction(MachineFunction &Fn) {
 
   dbgs() << getPassName() << ", function " << Fn.getName() << "\n";
-  TM = &Fn.getTarget();
+  IkeaMetaData be;
+	dbgs() << "[BACKEND] " << be.get_address(0) << "\n";
+	
+	TM = &Fn.getTarget();
   STI = &Fn.getSubtarget<AArch64Subtarget>();
   TII = STI->getInstrInfo();
   TRI = STI->getRegisterInfo();
@@ -250,6 +265,8 @@ bool AArch64IKEA::runOnMachineFunction(MachineFunction &Fn) {
       MachineInstr &MI = *MBBI;
       const auto &DL = MI.getDebugLoc();
       unsigned src = 0;
+
+			//Instruction &insn = *MBBI;
 
       // Load Instrumentation
       if (isLoad(MI)) {
