@@ -51,7 +51,7 @@ namespace {
     const AArch64RegisterInfo *TRI      = nullptr;
 
     // Add defined functions here (like .h)
-		bool runOnFunction(Function &F);
+		//bool runOnFunction(Function &F);
     bool runOnMachineFunction(MachineFunction &Fn) override;
     StringRef getPassName() const override {
       return AARCH64_IKEAPASS_NAME;
@@ -231,24 +231,32 @@ bool instrumentLoad(const MachineInstr &MI) {
 }
 */
 
+/*
 bool AArch64IKEA::runOnFunction(Function &F) {
 	dbgs() << "IR Pass\n";
 	dbgs() << "[IR]: " << F.getName() << "\n";
 	return false;
 }
+*/
 
 
 bool AArch64IKEA::runOnMachineFunction(MachineFunction &Fn) {
 
   dbgs() << getPassName() << ", function " << Fn.getName() << "\n";
-  IkeaMetaData be;
-	dbgs() << "[BACKEND] " << be.get_address(0) << "\n";
+  //IkeaMetaData be;
+	//dbgs() << "[BACKEND] " << be.get_address(0) << "\n";
 	
 	TM = &Fn.getTarget();
   STI = &Fn.getSubtarget<AArch64Subtarget>();
   TII = STI->getInstrInfo();
   TRI = STI->getRegisterInfo();
   bool Modified = false;
+
+/*
+#ifdef CONFIG_BGI
+	dbgs() << "Testing #ifdef\n";
+#endif
+*/
 
   //Fn.dump();
 
@@ -278,10 +286,35 @@ bool AArch64IKEA::runOnMachineFunction(MachineFunction &Fn) {
           }
           
           src = MI.getOperand(1).getReg();
-          if (src != SP && src != FP)
-            BuildMI(MFI, MBBI, DL, TII->get(AArch64::BFMXri), X15).addReg(X15).addReg(src).addImm(0).addImm(55);
-          else {
+          if (src != SP && src != FP) {
+            // \sys
+						//BuildMI(MFI, MBBI, DL, TII->get(AArch64::LDRXui), AArch64::XZR).addReg(src).addImm(0);
+						//BuildMI(MFI, MBBI, DL, TII->get(AArch64::BFMXri), X15).addReg(X15).addReg(src).addImm(0).addImm(55);
+						
+						// BGI
+						
+						for (int iter = 0; iter < 8; iter++) {
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);	
+						}
+						
+					}
+					else {
             // TODO: Instrument for SP
+						/*
+						for (int iter = 0; iter < 8; iter++) {
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);	
+						}
+						*/
           }
         }
         if (MI.getNumOperands() == 4) {
@@ -292,10 +325,33 @@ bool AArch64IKEA::runOnMachineFunction(MachineFunction &Fn) {
           }
           
           src = MI.getOperand(2).getReg();
-          if (src != SP && src != FP)
-            BuildMI(MFI, MBBI, DL, TII->get(AArch64::BFMXri), X15).addReg(X15).addReg(src).addImm(0).addImm(55);
-          else {
+          if (src != SP && src != FP) {
+            //BuildMI(MFI, MBBI, DL, TII->get(AArch64::LDRXui), AArch64::XZR).addReg(src).addImm(0);
+						//BuildMI(MFI, MBBI, DL, TII->get(AArch64::BFMXri), X15).addReg(X15).addReg(src).addImm(0).addImm(55);
+						
+						
+						for (int iter = 0; iter < 8; iter++) {
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);	
+						}
+						
+					}
+					else {
             // TODO: Instrument for SP
+						/*
+						for (int iter = 0; iter < 8; iter++) {
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);	
+						}
+						*/
           }
         }
         Modified = true;
@@ -318,12 +374,32 @@ bool AArch64IKEA::runOnMachineFunction(MachineFunction &Fn) {
           src = MI.getOperand(1).getReg();
           if (src != SP && src != FP) {
             // TODO: Why add LDR for STR instrumentation?
-            BuildMI(MFI, MBBI, DL, TII->get(AArch64::LDRXui), AArch64::XZR).addReg(src).addImm(0);
-            BuildMI(MFI, MBBI, DL, TII->get(AArch64::BFMXri), X15).addReg(X15).addReg(src).addImm(0).addImm(55);
-          }
+            //BuildMI(MFI, MBBI, DL, TII->get(AArch64::LDRXui), AArch64::XZR).addReg(src).addImm(0);
+            //BuildMI(MFI, MBBI, DL, TII->get(AArch64::BFMXri), X15).addReg(X15).addReg(src).addImm(0).addImm(55);
+						
+						for (int iter = 0; iter < 8; iter++) {
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);	
+						}
+						
+					}
           else {
             // TODO: instrument for SP
-          }
+						/*
+						for (int iter = 0; iter < 8; iter++) {
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);	
+						}
+						*/
+					}
         }
         if (MI.getNumOperands() == 4) {
           
@@ -334,11 +410,31 @@ bool AArch64IKEA::runOnMachineFunction(MachineFunction &Fn) {
           
           src = MI.getOperand(2).getReg();
           if (src != SP && src != FP) {
-            BuildMI(MFI, MBBI, DL, TII->get(AArch64::LDRXui), AArch64::XZR).addReg(src).addImm(0);                
-            BuildMI(MFI, MBBI, DL, TII->get(AArch64::BFMXri), X15).addReg(X15).addReg(src).addImm(0).addImm(55);
-          }
+            //BuildMI(MFI, MBBI, DL, TII->get(AArch64::LDRXui), AArch64::XZR).addReg(src).addImm(0);                
+            //BuildMI(MFI, MBBI, DL, TII->get(AArch64::BFMXri), X15).addReg(X15).addReg(src).addImm(0).addImm(55);
+						
+						for (int iter = 0; iter < 8; iter++) {
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);	
+						}
+						
+					}
           else {
             // TODO: instrument for SP
+						/*
+						for (int iter = 0; iter < 8; iter++) {
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);
+							BuildMI(MFI, MBBI, DL, TII->get(AArch64::ADDXri), X15).addReg(X15).addImm(0).addImm(0);	
+						}
+						*/
           }
         }
       }
