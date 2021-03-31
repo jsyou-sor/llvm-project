@@ -37,6 +37,8 @@
 #define SANITIZER_GROUP(NAME, ID, ALIAS)
 #endif
 
+// ZomTag
+SANITIZER("zomtag", ZomTag)
 
 // AddressSanitizer
 SANITIZER("address", Address)

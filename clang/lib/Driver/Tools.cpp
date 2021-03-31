@@ -3340,6 +3340,8 @@ collectSanitizerRuntimes(const ToolChain &TC, const ArgList &Args,
   }
   if (SanArgs.needsEsanRt())
     StaticRuntimes.push_back("esan");
+  if (SanArgs.needsZomTagRT())
+    StaticRuntimes.push_back("zomtag");
 }
 
 // Should be called before we add system libraries (C++ ABI, libstdc++/libc++,
@@ -3376,6 +3378,10 @@ static bool addSanitizerRuntimes(const ToolChain &TC, const ArgList &Args,
   const SanitizerArgs &SanArgs = TC.getSanitizerArgs();
   if (SanArgs.hasCrossDsoCfi() && !AddExportDynamic)
     CmdArgs.push_back("-export-dynamic-symbol=__cfi_check");
+
+  if (SanArgs.needsZomTagRT()) {
+
+  }
 
   return !StaticRuntimes.empty();
 }

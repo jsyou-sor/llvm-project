@@ -100,6 +100,9 @@ struct InstrProfOptions {
 ModulePass *createInstrProfilingLegacyPass(
     const InstrProfOptions &Options = InstrProfOptions());
 
+// Insert ZomTag instrumentation
+ModulePass *createZomTagPass();
+
 // Insert AddressSanitizer (address sanity checking) instrumentation
 FunctionPass *createAddressSanitizerFunctionPass(bool CompileKernel = false,
                                                  bool Recover = false,
