@@ -255,10 +255,12 @@ static void addEfficiencySanitizerPass(const PassManagerBuilder &Builder,
   PM.add(createEfficiencySanitizerPass(Opts));
 }
 
+/*
 static void addZomTagPass(const PassManagerBuilder &Builder,
                           legacy::PassManagerBase &PM) {
   PM.add(createZomTagPass());
 }
+*/
 
 static TargetLibraryInfoImpl *createTLII(llvm::Triple &TargetTriple,
                                          const CodeGenOptions &CodeGenOpts) {
@@ -421,12 +423,14 @@ void EmitAssemblyHelper::CreatePasses(legacy::PassManager &MPM,
                            addEfficiencySanitizerPass);
   }
 
+/*
   if (LangOpts.Sanitize.has(SanitizerKind::ZomTag)) {
     PMBuilder.addExtension(PassManagerBuilder::EP_ScalarOptimizerLate,
                            addZomTagPass);
     PMBuilder.addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0,
                            addZomTagPass);
   }
+*/
 
   // Set up the per-function pass manager.
   FPM.add(new TargetLibraryInfoWrapperPass(*TLII));

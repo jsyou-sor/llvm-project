@@ -32,21 +32,46 @@
 #include "llvm/Analysis/MemoryBuiltins.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/Transforms/IPO/PassManagerBuilder.h"
+
 using namespace llvm;
 using namespace std;
+
+static void getInterestingInsts(Instruction *I)
+{
+  if (StoreInst *Store = dyn_cast<StoreInst>(I))
+  {
+    Value *Val = Store->getValueOperand();
+    if (Val->getType()->isPointerTy())
+    {
+      I->print(errs());
+      errs() << "\n";
+    }
+  }
+}
 
 /* ZomTag LLVM Pass */
 namespace
 {
 
-struct ZomTag : public ModulePass
+struct ZomTag : public FunctionPass
 {
   static char ID;
-  ZomTag() : ModulePass(ID) { }
+  ZomTag() : FunctionPass(ID) { }
 
-  virtual bool runOnModule(Module &M)
+  virtual bool runOnFunction(Function &F)
   {
     dbgs() << "ZomTag Pass\n";
+    
+    //const DataLayout *DL = &M.getDataLayout();
+    for (auto &BB : F)
+    {
+      for (auto &I : BB)
+      {
+        getInterestingInsts(&I);
+      }
+    }
     return false;
   }
 };
@@ -54,10 +79,11 @@ struct ZomTag : public ModulePass
 }
 
 char ZomTag::ID = 0;
-namespace llvm
+static void registerZomTagPass(const PassManagerBuilder &,
+                               legacy::PassManagerBase &PM)
 {
-  ModulePass *createZomTagPass()
-  {
-    return new ZomTag();
-  }
+  PM.add(new ZomTag());
 }
+
+static RegisterStandardPasses
+  RegisterMyPass(PassManagerBuilder::EP_EarlyAsPossible, registerZomTagPass);
