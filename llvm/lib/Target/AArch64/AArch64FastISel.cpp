@@ -15,6 +15,7 @@
 
 #include "AArch64.h"
 #include "AArch64CallingConvention.h"
+#include "AArch64Zt.h"
 #include "AArch64Subtarget.h"
 #include "AArch64TargetMachine.h"
 #include "MCTargetDesc/AArch64AddressingModes.h"
@@ -185,7 +186,7 @@ private:
   unsigned emitLoad(MVT VT, MVT ResultVT, Address Addr, bool WantZExt = true,
                     MachineMemOperand *MMO = nullptr);
   bool emitStore(MVT VT, unsigned SrcReg, Address Addr,
-                 MachineMemOperand *MMO = nullptr);
+                 MachineMemOperand *MMO = nullptr, MDNode *ZTData = nullptr);
   bool emitStoreRelease(MVT VT, unsigned SrcReg, unsigned AddrReg,
                         MachineMemOperand *MMO = nullptr);
   unsigned emitIntExt(MVT SrcVT, unsigned SrcReg, MVT DestVT, bool isZExt);
@@ -2023,7 +2024,8 @@ bool AArch64FastISel::emitStoreRelease(MVT VT, unsigned SrcReg,
 }
 
 bool AArch64FastISel::emitStore(MVT VT, unsigned SrcReg, Address Addr,
-                                MachineMemOperand *MMO) {
+                                MachineMemOperand *MMO,
+                                MDNode *ZTData) {
   if (!TLI.allowsMisalignedMemoryAccesses(VT))
     return false;
 
@@ -2084,13 +2086,24 @@ bool AArch64FastISel::emitStore(MVT VT, unsigned SrcReg, Address Addr,
   const MCInstrDesc &II = TII.get(Opc);
   SrcReg = constrainOperandRegClass(II, SrcReg, II.getNumDefs());
   
-  auto &C = FuncInfo.Fn->getContext();
+  //auto &C = FuncInfo.Fn->getContext();
   
   MachineInstrBuilder MIB =
       BuildMI(*FuncInfo.MBB, FuncInfo.InsertPt, DbgLoc, II).addReg(SrcReg);
   addLoadStoreOperands(Addr, MIB, MachineMemOperand::MOStore, ScaleFactor, MMO);
 
-  MIB.addMetadata(MDNode::get(C, MDString::get(C, "howdy")));
+  //MIB.addMetadata(MDNode::get(C, MDString::get(C, "howdy")));
+
+  if (ZTData != nullptr)
+  {
+    errs() << "******************moving metadata from store to emitted STR\n";
+    auto &C = FuncInfo.Fn->getContext();
+    MIB.addMetadata(MDNode::get(C, ZTData));
+  } 
+  else
+  {
+    errs() << "******************no metadata when emitting STR\n";
+  }
 
   return true;
 }
@@ -2157,7 +2170,10 @@ bool AArch64FastISel::selectStore(const Instruction *I) {
   if (!computeAddress(PtrV, Addr, Op0->getType()))
     return false;
 
-  if (!emitStore(VT, SrcReg, Addr, createMachineMemOperandFor(I)))
+  auto ZTData = I->getMetadata(ZTMetaDataKind);
+  errs() << "**************** calling emitStore" <<
+    (ZTData != nullptr ? " with ZTData" : " without ZTData") << "\n";
+  if (!emitStore(VT, SrcReg, Addr, createMachineMemOperandFor(I), ZTData))
     return false;
   return true;
 }
