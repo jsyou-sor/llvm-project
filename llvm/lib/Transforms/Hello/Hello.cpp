@@ -32,6 +32,23 @@ namespace {
       ++HelloCounter;
       errs() << "Hello: ";
       errs().write_escaped(F.getName()) << '\n';
+      
+      for (auto &BB : F)
+      {
+        errs() << "Basic Block: ";
+        errs().write_escaped(BB.getName()) << '\n';
+
+        for (auto &I : BB)
+        {
+          errs() << " Instruction: ";
+          I.dump();
+          auto &C = F.getContext();
+          MDNode *N = MDNode::get(C, MDString::get(C, "howdy"));
+          I.setMetadata("comment", N);
+        }
+      }
+      
+      
       return false;
     }
   };
@@ -40,6 +57,7 @@ namespace {
 char Hello::ID = 0;
 static RegisterPass<Hello> X("hello", "Hello World Pass");
 
+/*
 namespace {
   // Hello2 - The second implementation with getAnalysisUsage implemented.
   struct Hello2 : public FunctionPass {
@@ -63,3 +81,4 @@ namespace {
 char Hello2::ID = 0;
 static RegisterPass<Hello2>
 Y("hello2", "Hello World Pass (with getAnalysisUsage implemented)");
+*/
