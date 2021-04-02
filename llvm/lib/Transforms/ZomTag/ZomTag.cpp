@@ -43,11 +43,38 @@ static void getInterestingInsts(Instruction *I)
   if (StoreInst *Store = dyn_cast<StoreInst>(I))
   {
     Value *Val = Store->getValueOperand();
+    Value *Ptr = Store->getPointerOperand();
+    Type *t = Ptr->getType();
+    Type *tt = t->getPointerElementType();
+    
+    errs() << "[STR Instrumentation]\n";
+    errs() << "instruction:";
+    I->print(errs());
+    errs() << "\npointer:";
+    Ptr->print(errs());
+    errs() << "\ntype:";
+    t->print(errs());
+    errs() << "\nptr type:";
+    tt->print(errs());
+    errs() << "\n\n";
+    
+/*
     if (Val->getType()->isPointerTy())
     {
+      errs() << "[PTR]";
       I->print(errs());
       errs() << "\n";
+      //Val->print(errs());
+      errs() << "\n";
     }
+*/
+  }
+
+  else if (GetElementPtrInst *GEP = dyn_cast<GetElementPtrInst>(I))
+  {
+    errs() << "[GEP Instrumentation]";
+    I->print(errs());
+    errs() << "\n\n";
   }
 }
 
@@ -62,7 +89,7 @@ struct ZomTag : public FunctionPass
 
   virtual bool runOnFunction(Function &F)
   {
-    dbgs() << "ZomTag Pass\n";
+    //dbgs() << "ZomTag Pass\n";
     
     //const DataLayout *DL = &M.getDataLayout();
     for (auto &BB : F)
