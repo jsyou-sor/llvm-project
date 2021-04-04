@@ -191,9 +191,13 @@ private:
                         MachineMemOperand *MMO = nullptr);
   unsigned emitIntExt(MVT SrcVT, unsigned SrcReg, MVT DestVT, bool isZExt);
   unsigned emiti1Ext(unsigned SrcReg, MVT DestVT, bool isZExt);
+  //unsigned emitAdd(MVT RetVT, const Value *LHS, const Value *RHS,
+                   //bool SetFlags = false, bool WantResult = true,
+                   //bool IsZExt = false);
   unsigned emitAdd(MVT RetVT, const Value *LHS, const Value *RHS,
                    bool SetFlags = false, bool WantResult = true,
-                   bool IsZExt = false);
+                   bool IsZExt = false,
+                   MDNode *ZTData = nullptr);
   unsigned emitAdd_ri_(MVT VT, unsigned Op0, bool Op0IsKill, int64_t Imm);
   unsigned emitSub(MVT RetVT, const Value *LHS, const Value *RHS,
                    bool SetFlags = false, bool WantResult = true,
@@ -1149,7 +1153,19 @@ unsigned AArch64FastISel::emitAddSub(bool UseAdd, MVT RetVT, const Value *LHS,
                                 WantResult);
 
   if (ResultReg)
+  {
+/*
+    if (ZTData != nullptr)
+    {
+      errs() << "[AArch64FastISel]\tcase 1: moving metadata from add to emitted ADD\n";
+      auto &C = FuncInfo.Fn->getContext();
+      MIB.addMetaData(MDNode::get(C, ZTData));
+    }
+    else
+      errs() << "[AArch64FastISel]\tcase 1: no metatdata when emitting ADD\n";
+*/
     return ResultReg;
+  }
 
   // Only extend the RHS within the instruction if there is a valid extend type.
   if (ExtendType != AArch64_AM::InvalidShiftExtend && RHS->hasOneUse() &&
@@ -1161,6 +1177,17 @@ unsigned AArch64FastISel::emitAddSub(bool UseAdd, MVT RetVT, const Value *LHS,
           if (!RHSReg)
             return 0;
           bool RHSIsKill = hasTrivialKill(SI->getOperand(0));
+
+/*        
+          if (ZTData != nullptr)
+          {
+            errs() << "[AArch64FastISel]\tcase 2: moving metadata from add to emitted ADD\n";
+            auto &C = FuncInfo.Fn->getContext();
+            MIB.addMetaData(MDNode::get(C, ZTData));
+          }
+          else
+            errs() << "[AArch64FastISel]\tcase 2: no metatdata when emitting ADD\n";
+*/          
           return emitAddSub_rx(UseAdd, RetVT, LHSReg, LHSIsKill, RHSReg,
                                RHSIsKill, ExtendType, C->getZExtValue(),
                                SetFlags, WantResult);
@@ -1169,6 +1196,18 @@ unsigned AArch64FastISel::emitAddSub(bool UseAdd, MVT RetVT, const Value *LHS,
     if (!RHSReg)
       return 0;
     bool RHSIsKill = hasTrivialKill(RHS);
+
+/*  
+    if (ZTData != nullptr)
+    {
+      errs() << "[AArch64FastISel]\tcase 3: moving metadata from add to emitted ADD\n";
+      auto &C = FuncInfo.Fn->getContext();
+      MIB.addMetaData(MDNode::get(C, ZTData));
+    }
+    else
+      errs() << "[AArch64FastISel]\tcase 3: no metatdata when emitting ADD\n";    
+*/
+    
     return emitAddSub_rx(UseAdd, RetVT, LHSReg, LHSIsKill, RHSReg, RHSIsKill,
                          ExtendType, 0, SetFlags, WantResult);
   }
@@ -1193,7 +1232,19 @@ unsigned AArch64FastISel::emitAddSub(bool UseAdd, MVT RetVT, const Value *LHS,
                                 RHSIsKill, AArch64_AM::LSL, ShiftVal, SetFlags,
                                 WantResult);
       if (ResultReg)
+      {
+/*
+        if (ZTData != nullptr)
+        {
+          errs() << "[AArch64FastISel]\tcase 4: moving metadata from add to emitted ADD\n";
+          auto &C = FuncInfo.Fn->getContext();
+          MIB.addMetaData(MDNode::get(C, ZTData));
+        }
+        else
+          errs() << "[AArch64FastISel]\tcase 4: no metatdata when emitting ADD\n";
+*/          
         return ResultReg;
+      }
     }
   }
 
@@ -1218,7 +1269,19 @@ unsigned AArch64FastISel::emitAddSub(bool UseAdd, MVT RetVT, const Value *LHS,
                                     RHSIsKill, ShiftType, ShiftVal, SetFlags,
                                     WantResult);
           if (ResultReg)
+          {
+/*
+            if (ZTData != nullptr)
+            {
+              errs() << "[AArch64FastISel]\tcase 5: moving metadata from add to emitted ADD\n";
+              auto &C = FuncInfo.Fn->getContext();
+              MIB.addMetaData(MDNode::get(C, ZTData));
+            }
+            else
+              errs() << "[AArch64FastISel]\tcase 5: no metatdata when emitting ADD\n";
+*/
             return ResultReg;
+          }
         }
       }
     }
@@ -1231,6 +1294,17 @@ unsigned AArch64FastISel::emitAddSub(bool UseAdd, MVT RetVT, const Value *LHS,
 
   if (NeedExtend)
     RHSReg = emitIntExt(SrcVT, RHSReg, RetVT, IsZExt);
+
+/*
+    if (ZTData != nullptr)
+    {
+      errs() << "[AArch64FastISel]\tcase 6: moving metadata from add to emitted ADD\n";
+      auto &C = FuncInfo.Fn->getContext();
+      MIB.addMetaData(MDNode::get(C, ZTData));
+    }
+    else
+      errs() << "[AArch64FastISel]\tcase 6: no metatdata when emitting ADD\n";    
+*/
 
   return emitAddSub_rr(UseAdd, RetVT, LHSReg, LHSIsKill, RHSReg, RHSIsKill,
                        SetFlags, WantResult);
@@ -1469,7 +1543,18 @@ bool AArch64FastISel::emitFCmp(MVT RetVT, const Value *LHS, const Value *RHS) {
 }
 
 unsigned AArch64FastISel::emitAdd(MVT RetVT, const Value *LHS, const Value *RHS,
-                                  bool SetFlags, bool WantResult, bool IsZExt) {
+                                  bool SetFlags, bool WantResult, bool IsZExt,
+                                  MDNode *ZTData) {
+
+  if (ZTData != nullptr)
+  {
+    errs() << "[AArch64FastISel]\tcase 6: moving metadata from add to emitted ADD\n";
+    auto &C = FuncInfo.Fn->getContext();
+    MIB.addMetaData(MDNode::get(C, ZTData));
+  }
+  else
+    errs() << "[AArch64FastISel]\tcase 6: no metatdata when emitting ADD\n";    
+
   return emitAddSub(/*UseAdd=*/true, RetVT, LHS, RHS, SetFlags, WantResult,
                     IsZExt);
 }
@@ -1849,7 +1934,10 @@ bool AArch64FastISel::selectAddSub(const Instruction *I) {
   default:
     llvm_unreachable("Unexpected instruction.");
   case Instruction::Add:
-    ResultReg = emitAdd(VT, I->getOperand(0), I->getOperand(1));
+    auto ZTData = I->getMetadata(ZTMetaDataKind);
+    errs() << "[AArch64FastISel]\tcalling emitAdd" <<
+              (ZTData != nullptr ? " with ZTData" : " without ZTData") << "\n";
+    ResultReg = emitAdd(VT, I->getOperand(0), I->getOperand(1), ZTData);
     break;
   case Instruction::Sub:
     ResultReg = emitSub(VT, I->getOperand(0), I->getOperand(1));

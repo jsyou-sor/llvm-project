@@ -12,7 +12,7 @@ CLANGPP     := ${LLVM}/bin/clang++
 LLC         := ${LLVM}/bin/llc
 GCC         := ${LINARO_GCC}/bin/aarch64-linux-gnu-gcc
 
-CFLAGS += -Xclang -load -Xclang /home/jsyou/zomtag/build/lib/LLVMHello.*
+CFLAGS += -Xclang -load -Xclang /home/jsyou/zomtag/build/lib/LLVMGepMDPass.*
 CFLAGS += -O0
 CFLAGS += --target=aarch64-linux-gnu
 CFLAGS += -march=armv8.2a
@@ -50,13 +50,13 @@ $(BIN:=.s): %.s : %.linked.opt.ll
 	$(LLC) $(LLC_FLAGS) $< -o $@
 
 test:
-	${CLANG} -emit-llvm -o example.bc -c example.c
-	${LLVM_OPT} -load ../../build/lib/LLVMHello.so -hello example.bc -o example.opt.bc
-	${CLANG} ${CFLAGS} -o example example.opt.bc
+	${CLANG} -emit-llvm -o test.bc -c test.c
+	${LLVM_OPT} -load ../../build/lib/LLVMGepMDPass.so -gep-md-pass test.bc -o test.opt.bc
+	${CLANG} ${CFLAGS} -o test test.opt.bc
 
 .PHONY: dis
 dis: $(BIN:=.linked.ll) $(BIN=.linked.opt.ll) $(BIN:=.s)
 
 .PHONY: clean
 clean::
-	rm -rf $(CLEAN_FILES) *.bc *.o *.s $(BIN) $(BIN) *.linked_bc *.ll *.dump a.out example
+	rm -rf $(CLEAN_FILES) *.bc *.o *.s $(BIN) $(BIN) *.linked_bc *.ll *.dump a.out example hello

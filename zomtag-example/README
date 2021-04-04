@@ -1,0 +1,7 @@
+04/04/2021
+- $ make test (to apply both IR and backend passes)
+- TODO
+  => need to change helper functions (i.e. emitAddSub, emitAddSub_rr, emitAddSub_rx, emitAddSub_rs)
+     to transfer metadata in PARTS-style
+  => too many calls to helper functions to update all of them
+  => just make 'emitAdd' used helper functions
