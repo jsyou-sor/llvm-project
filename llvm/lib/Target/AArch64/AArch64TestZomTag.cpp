@@ -39,6 +39,7 @@ namespace
 
       bool isLoad(MachineInstr &MI);
       bool isStore(MachineInstr &MI);
+      bool isAddSub(MachineInstr &MI);
   };
   //char TestZomTag::ID = 0;
 } // end anonymous namespace
@@ -76,29 +77,15 @@ bool TestZomTag::runOnMachineFunction(MachineFunction &MF)
   {
     for (auto &MI : MBB)
     {
-      if (!MI.mayLoadOrStore())
-        continue;
-      //if (!TII->getMemOpInfo(MI.getOpcode(), scale, width, min_offset, max_offset))
-        //continue;
-      if (isLoad(MI))
+      //MI.dump();
+
+      if (isAddSub(MI))
       {
         errs() << "found " << TII->getName(MI.getOpcode()) << "\n";
-      }
-      else if (isStore(MI))
-      {
-        errs() << "found " << TII->getName(MI.getOpcode())
-               << ", with " << MI.getNumOperands() << " operands"
-               << "\n";
-        MI.dump();
-
         auto op_src = MI.getOperand(MI.getNumOperands() - 1);
-        errs() << "\t\t op_src is ";
-        errs() << (op_src.isMetadata() ? "(metadata) " : "(non-metadata) ");
+        errs() << "\t\top_src is ";
+        errs() << (op_src.isMetadata() ? "(metadata)" : "(non-metadata) ");
         op_src.dump();
-      }
-      else
-      {
-        errs() << "unable to identify MemOp type\n";
       }
     }
   }
@@ -185,6 +172,32 @@ bool TestZomTag::isLoad(MachineInstr &MI)
     case AArch64::LDRHHui:
     case AArch64::LDRBui:
     case AArch64::LDRBBui:
+      return true;
+  }
+}
+
+bool TestZomTag::isAddSub(MachineInstr &MI)
+{
+  switch(MI.getOpcode())
+  {
+    default:
+      return false;
+    case AArch64::SUBWri:
+    case AArch64::SUBXri:
+    case AArch64::ADDWri:
+    case AArch64::ADDXri:
+    case AArch64::SUBSWri:
+    case AArch64::SUBSXri:
+    case AArch64::ADDSWri:
+    case AArch64::ADDSXri:
+    case AArch64::SUBWrr:
+    case AArch64::SUBXrr:
+    case AArch64::ADDWrr:
+    case AArch64::ADDXrr:
+    case AArch64::SUBSWrr:
+    case AArch64::SUBSXrr:
+    case AArch64::ADDSWrr:
+    case AArch64::ADDSXrr:
       return true;
   }
 }
