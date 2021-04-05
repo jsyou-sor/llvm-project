@@ -27,6 +27,7 @@ CFLAGS += -fno-stack-protector
 CFLAGS += -D_FORTIFY_SOURCE=0
 CFLAGS += -static
 #CFLAGS += -mllvm -hello
+CFLAGS += -Wno-override-module
 
 LLC_FLAGS += -mtriple=aarch64-linux-gnu
 OPT_FLAGS += -load ../build/lib/LLVMHello.so -hello
@@ -59,4 +60,4 @@ dis: $(BIN:=.linked.ll) $(BIN=.linked.opt.ll) $(BIN:=.s)
 
 .PHONY: clean
 clean::
-	rm -rf $(CLEAN_FILES) *.bc *.o *.s $(BIN) $(BIN) *.linked_bc *.ll *.dump a.out example hello
+	rm -rf $(CLEAN_FILES) *.bc *.o *.s $(BIN) $(BIN) *.linked_bc *.ll *.dump a.out example hello test

@@ -176,6 +176,34 @@ private:
                           AArch64_AM::ShiftExtendType ExtType,
                           uint64_t ShiftImm, bool SetFlags = false,
                          bool WantResult = true);
+/*
+  unsigned emitAddSub_zt(bool UseAdd, MVT RetVT, const Value *LHS,
+                      const Value *RHS, bool SetFlags = false,
+                      bool WantResult = true,  bool IsZExt = false,
+                      MDNode *ZTData = nullptr);
+*/
+  unsigned emitAddSub_rr_zt(bool UseAdd, MVT RetVT, unsigned LHSReg,
+                         bool LHSIsKill, unsigned RHSReg, bool RHSIsKill,
+                         bool SetFlags = false, bool WantResult = true,
+                         MDNode *ZTData = nullptr);
+  unsigned emitAddSub_ri_zt(bool UseAdd, MVT RetVT, unsigned LHSReg,
+                         bool LHSIsKill, uint64_t Imm, bool SetFlags = false,
+                         bool WantResult = true,
+                         MDNode *ZTData = nullptr);
+/*
+  unsigned emitAddSub_rs_zt(bool UseAdd, MVT RetVT, unsigned LHSReg,
+                         bool LHSIsKill, unsigned RHSReg, bool RHSIsKill,
+                         AArch64_AM::ShiftExtendType ShiftType,
+                         uint64_t ShiftImm, bool SetFlags = false,
+                         bool WantResult = true,
+                         MDNode *ZTData = nullptr);
+  unsigned emitAddSub_rx_zt(bool UseAdd, MVT RetVT, unsigned LHSReg,
+                         bool LHSIsKill, unsigned RHSReg, bool RHSIsKill,
+                          AArch64_AM::ShiftExtendType ExtType,
+                          uint64_t ShiftImm, bool SetFlags = false,
+                         bool WantResult = true,
+                         MDNode *ZTData = nullptr);
+*/
 
   // Emit functions.
   bool emitCompareAndBranch(const BranchInst *BI);
@@ -191,14 +219,15 @@ private:
                         MachineMemOperand *MMO = nullptr);
   unsigned emitIntExt(MVT SrcVT, unsigned SrcReg, MVT DestVT, bool isZExt);
   unsigned emiti1Ext(unsigned SrcReg, MVT DestVT, bool isZExt);
-  //unsigned emitAdd(MVT RetVT, const Value *LHS, const Value *RHS,
-                   //bool SetFlags = false, bool WantResult = true,
-                   //bool IsZExt = false);
   unsigned emitAdd(MVT RetVT, const Value *LHS, const Value *RHS,
                    bool SetFlags = false, bool WantResult = true,
-                   bool IsZExt = false,
-                   MDNode *ZTData = nullptr);
+                   bool IsZExt = false);
+  //unsigned emitAdd(MVT RetVT, const Value *LHS, const Value *RHS,
+                   //bool SetFlags = false, bool WantResult = true,
+                   //bool IsZExt = false,
+                   //MDNode *ZTData = nullptr);
   unsigned emitAdd_ri_(MVT VT, unsigned Op0, bool Op0IsKill, int64_t Imm);
+  unsigned emitAdd_ri_zt(MVT VT, unsigned Op0, bool Op0IsKill, int64_t Imm, MDNode *ZTData);
   unsigned emitSub(MVT RetVT, const Value *LHS, const Value *RHS,
                    bool SetFlags = false, bool WantResult = true,
                    bool IsZExt = false);
@@ -1344,6 +1373,51 @@ unsigned AArch64FastISel::emitAddSub_rr(bool UseAdd, MVT RetVT, unsigned LHSReg,
   return ResultReg;
 }
 
+unsigned AArch64FastISel::emitAddSub_rr_zt(bool UseAdd, MVT RetVT, unsigned LHSReg,
+                                           bool LHSIsKill, unsigned RHSReg,
+                                           bool RHSIsKill, bool SetFlags,
+                                           bool WantResult, MDNode *ZTData) {
+  assert(LHSReg && RHSReg && "Invalid register number.");
+
+  if (RetVT != MVT::i32 && RetVT != MVT::i64)
+    return 0;
+
+  static const unsigned OpcTable[2][2][2] = {
+    { { AArch64::SUBWrr,  AArch64::SUBXrr  },
+      { AArch64::ADDWrr,  AArch64::ADDXrr  }  },
+    { { AArch64::SUBSWrr, AArch64::SUBSXrr },
+      { AArch64::ADDSWrr, AArch64::ADDSXrr }  }
+  };
+  bool Is64Bit = RetVT == MVT::i64;
+  unsigned Opc = OpcTable[SetFlags][UseAdd][Is64Bit];
+  const TargetRegisterClass *RC =
+      Is64Bit ? &AArch64::GPR64RegClass : &AArch64::GPR32RegClass;
+  unsigned ResultReg;
+  if (WantResult)
+    ResultReg = createResultReg(RC);
+  else
+    ResultReg = Is64Bit ? AArch64::XZR : AArch64::WZR;
+
+  const MCInstrDesc &II = TII.get(Opc);
+  LHSReg = constrainOperandRegClass(II, LHSReg, II.getNumDefs());
+  RHSReg = constrainOperandRegClass(II, RHSReg, II.getNumDefs() + 1);
+  MachineInstrBuilder MIB = 
+  BuildMI(*FuncInfo.MBB, FuncInfo.InsertPt, DbgLoc, II, ResultReg)
+      .addReg(LHSReg, getKillRegState(LHSIsKill))
+      .addReg(RHSReg, getKillRegState(RHSIsKill));
+  
+  if (ZTData != nullptr)
+  {
+    errs() << "[AArch64FastISel::emitAddSub_rr_zt]\tmoving metadata from add to emitted ADD\n";
+    auto &C = FuncInfo.Fn->getContext();
+    MIB.addMetadata(MDNode::get(C, ZTData));
+  } else {
+    errs() << "[AArch64FastISel::emitAddSub_rr_zt]\tno metadata when emitting ADD\n"; 
+  }
+  
+  return ResultReg;
+}
+
 unsigned AArch64FastISel::emitAddSub_ri(bool UseAdd, MVT RetVT, unsigned LHSReg,
                                         bool LHSIsKill, uint64_t Imm,
                                         bool SetFlags, bool WantResult) {
@@ -1386,6 +1460,68 @@ unsigned AArch64FastISel::emitAddSub_ri(bool UseAdd, MVT RetVT, unsigned LHSReg,
       .addReg(LHSReg, getKillRegState(LHSIsKill))
       .addImm(Imm)
       .addImm(getShifterImm(AArch64_AM::LSL, ShiftImm));
+  return ResultReg;
+}
+
+unsigned AArch64FastISel::emitAddSub_ri_zt(bool UseAdd, MVT RetVT, unsigned LHSReg,
+                                        bool LHSIsKill, uint64_t Imm,
+                                        bool SetFlags, bool WantResult,
+                                        MDNode *ZTData) {
+  assert(LHSReg && "Invalid register number.");
+
+  if (ZTData != nullptr)
+    errs() << "[AArch64FastISel::emitAddSub_ri_zt]\tmetadata...\n";
+  else
+    errs() << "[AArch64FastISel::emitAddSub_ri_zt]\tno metadata...\n";
+
+  if (RetVT != MVT::i32 && RetVT != MVT::i64)
+    return 0;
+
+  unsigned ShiftImm;
+  if (isUInt<12>(Imm))
+    ShiftImm = 0;
+  else if ((Imm & 0xfff000) == Imm) {
+    ShiftImm = 12;
+    Imm >>= 12;
+  } else
+    return 0;
+
+  static const unsigned OpcTable[2][2][2] = {
+    { { AArch64::SUBWri,  AArch64::SUBXri  },
+      { AArch64::ADDWri,  AArch64::ADDXri  }  },
+    { { AArch64::SUBSWri, AArch64::SUBSXri },
+      { AArch64::ADDSWri, AArch64::ADDSXri }  }
+  };
+  bool Is64Bit = RetVT == MVT::i64;
+  unsigned Opc = OpcTable[SetFlags][UseAdd][Is64Bit];
+  const TargetRegisterClass *RC;
+  if (SetFlags)
+    RC = Is64Bit ? &AArch64::GPR64RegClass : &AArch64::GPR32RegClass;
+  else
+    RC = Is64Bit ? &AArch64::GPR64spRegClass : &AArch64::GPR32spRegClass;
+  unsigned ResultReg;
+  if (WantResult)
+    ResultReg = createResultReg(RC);
+  else
+    ResultReg = Is64Bit ? AArch64::XZR : AArch64::WZR;
+
+  const MCInstrDesc &II = TII.get(Opc);
+  LHSReg = constrainOperandRegClass(II, LHSReg, II.getNumDefs());
+  MachineInstrBuilder MIB =
+  BuildMI(*FuncInfo.MBB, FuncInfo.InsertPt, DbgLoc, II, ResultReg)
+      .addReg(LHSReg, getKillRegState(LHSIsKill))
+      .addImm(Imm)
+      .addImm(getShifterImm(AArch64_AM::LSL, ShiftImm));
+  
+  if (ZTData != nullptr)
+  {
+    errs() << "[AArch64FastISel::emitAddSub_ri_zt]\tmoving metadata from add to emitted ADD\n";
+    auto &C = FuncInfo.Fn->getContext();
+    MIB.addMetadata(MDNode::get(C, ZTData));
+  } else {
+    errs() << "[AArch64FastISel::emitAddSub_ri_zt]\tno metadata when emitting ADD\n";
+  }
+  
   return ResultReg;
 }
 
@@ -1473,6 +1609,63 @@ unsigned AArch64FastISel::emitAddSub_rx(bool UseAdd, MVT RetVT, unsigned LHSReg,
   return ResultReg;
 }
 
+/*
+unsigned AArch64FastISel::emitAddSub_rx_zt(bool UseAdd, MVT RetVT, unsigned LHSReg,
+                                           bool LHSIsKill, unsigned RHSReg,
+                                           bool RHSIsKill,
+                                           AArch64_AM::ShiftExtendType ExtType,
+                                           uint64_t ShiftImm, bool SetFlags,
+                                           bool WantResult, MDNode *ZTData) {
+  assert(LHSReg && RHSReg && "Invalid register number.");
+
+  if (RetVT != MVT::i32 && RetVT != MVT::i64)
+    return 0;
+
+  if (ShiftImm >= 4)
+    return 0;
+
+  static const unsigned OpcTable[2][2][2] = {
+    { { AArch64::SUBWrx,  AArch64::SUBXrx  },
+      { AArch64::ADDWrx,  AArch64::ADDXrx  }  },
+    { { AArch64::SUBSWrx, AArch64::SUBSXrx },
+      { AArch64::ADDSWrx, AArch64::ADDSXrx }  }
+  };
+  bool Is64Bit = RetVT == MVT::i64;
+  unsigned Opc = OpcTable[SetFlags][UseAdd][Is64Bit];
+  const TargetRegisterClass *RC = nullptr;
+  if (SetFlags)
+    RC = Is64Bit ? &AArch64::GPR64RegClass : &AArch64::GPR32RegClass;
+  else
+    RC = Is64Bit ? &AArch64::GPR64spRegClass : &AArch64::GPR32spRegClass;
+  unsigned ResultReg;
+  if (WantResult)
+    ResultReg = createResultReg(RC);
+  else
+    ResultReg = Is64Bit ? AArch64::XZR : AArch64::WZR;
+
+  const MCInstrDesc &II = TII.get(Opc);
+  LHSReg = constrainOperandRegClass(II, LHSReg, II.getNumDefs());
+  RHSReg = constrainOperandRegClass(II, RHSReg, II.getNumDefs() + 1);
+  MachineInstrBuilder MIB =
+  BuildMI(*FuncInfo.MBB, FuncInfo.InsertPt, DbgLoc, II, ResultReg)
+      .addReg(LHSReg, getKillRegState(LHSIsKill))
+      .addReg(RHSReg, getKillRegState(RHSIsKill))
+      .addImm(getArithExtendImm(ExtType, ShiftImm));
+  
+  if (ZTData != nullptr)
+  {
+    errs() << "[AArch64FastISel]\temitAddSub_rx: moving metadata from add to emitted ADD\n";
+    auto &C = FuncInfo.Fn->getContext();
+    MIB.addMetadata(MDNode::get(C, ZTData));
+  } else
+  {
+    errs() << "[AArch64FastISel]\temitAddSub_rx: no metadata when emitting ADD\n";
+  }
+  
+  return ResultReg;
+}
+*/
+
 bool AArch64FastISel::emitCmp(const Value *LHS, const Value *RHS, bool IsZExt) {
   Type *Ty = LHS->getType();
   EVT EVT = TLI.getValueType(DL, Ty, true);
@@ -1543,9 +1736,9 @@ bool AArch64FastISel::emitFCmp(MVT RetVT, const Value *LHS, const Value *RHS) {
 }
 
 unsigned AArch64FastISel::emitAdd(MVT RetVT, const Value *LHS, const Value *RHS,
-                                  bool SetFlags, bool WantResult, bool IsZExt,
-                                  MDNode *ZTData) {
-
+                                  bool SetFlags, bool WantResult, bool IsZExt) {
+                                  //MDNode *ZTData) {
+/*
   if (ZTData != nullptr)
   {
     errs() << "[AArch64FastISel]\tcase 6: moving metadata from add to emitted ADD\n";
@@ -1554,6 +1747,7 @@ unsigned AArch64FastISel::emitAdd(MVT RetVT, const Value *LHS, const Value *RHS,
   }
   else
     errs() << "[AArch64FastISel]\tcase 6: no metatdata when emitting ADD\n";    
+*/
 
   return emitAddSub(/*UseAdd=*/true, RetVT, LHS, RHS, SetFlags, WantResult,
                     IsZExt);
@@ -1580,6 +1774,41 @@ unsigned AArch64FastISel::emitAdd_ri_(MVT VT, unsigned Op0, bool Op0IsKill,
     return 0;
 
   ResultReg = emitAddSub_rr(true, VT, Op0, Op0IsKill, CReg, true);
+  return ResultReg;
+}
+
+unsigned AArch64FastISel::emitAdd_ri_zt(MVT VT, unsigned Op0, bool Op0IsKill,
+                                      int64_t Imm, MDNode *ZTData) {
+  unsigned ResultReg;
+  
+  if (ZTData != nullptr)
+    errs() << "[AArch64FastISel::emitAdd_ri_zt]\tmetadata present...\n";
+  else
+    errs() << "[AArch64FastISel::emitAdd_ri_zt]\tno metadata...\n";
+  
+  if (Imm < 0)
+    ResultReg = emitAddSub_ri_zt(false, VT, Op0, Op0IsKill, -Imm, ZTData);
+  else
+  {
+    errs() << "[AArch64FastISel::emitAdd_ri_zt]\t";
+    if (ZTData != nullptr)
+      errs() << "calling emitAddSub_ri_zt w/ metadata\n";
+    else
+      errs() << "calling emitAddSub_ri_zt w/o metadata\n";
+    ResultReg = emitAddSub_ri_zt(true, VT, Op0, Op0IsKill, Imm, false, true, ZTData);
+  }
+
+  if (ResultReg)
+  {
+    errs() << "[AArch64FastISel::emitAdd_ri_zt]\treturning after calling emitAddSub_ri_zt...\n";
+    return ResultReg;
+  }
+  unsigned CReg = fastEmit_i(VT, VT, ISD::Constant, Imm);
+  if (!CReg)
+    return 0;
+
+  ResultReg = emitAddSub_rr_zt(true, VT, Op0, Op0IsKill, CReg, true, ZTData);
+  errs() << "[AArch64FastISel::emitAdd_ri_zt]\treturning after calling emitAddSub_rr_zt...\n";
   return ResultReg;
 }
 
@@ -1934,10 +2163,13 @@ bool AArch64FastISel::selectAddSub(const Instruction *I) {
   default:
     llvm_unreachable("Unexpected instruction.");
   case Instruction::Add:
-    auto ZTData = I->getMetadata(ZTMetaDataKind);
+/*
+    auto ZTData;
+    ZTData = I->getMetadata(ZTMetaDataKind);
     errs() << "[AArch64FastISel]\tcalling emitAdd" <<
               (ZTData != nullptr ? " with ZTData" : " without ZTData") << "\n";
-    ResultReg = emitAdd(VT, I->getOperand(0), I->getOperand(1), ZTData);
+*/
+    ResultReg = emitAdd(VT, I->getOperand(0), I->getOperand(1));
     break;
   case Instruction::Sub:
     ResultReg = emitSub(VT, I->getOperand(0), I->getOperand(1));
@@ -2259,8 +2491,8 @@ bool AArch64FastISel::selectStore(const Instruction *I) {
     return false;
 
   auto ZTData = I->getMetadata(ZTMetaDataKind);
-  errs() << "**************** calling emitStore" <<
-    (ZTData != nullptr ? " with ZTData" : " without ZTData") << "\n";
+  //errs() << "**************** calling emitStore" <<
+    //(ZTData != nullptr ? " with ZTData" : " without ZTData") << "\n";
   if (!emitStore(VT, SrcReg, Addr, createMachineMemOperandFor(I), ZTData))
     return false;
   return true;
@@ -5012,6 +5244,11 @@ bool AArch64FastISel::selectGetElementPtr(const Instruction *I) {
         continue;
       }
       if (TotalOffs) {
+        
+        auto ZTData = I->getMetadata(ZTMetaDataKind);
+        errs() << "[AArch64FastISel::emitGetElementPtr]\tcalling emitAdd_ri_ (1)" <<
+          (ZTData != nullptr ? " with ZTData" : " without ZTData") << "\n";
+        
         N = emitAdd_ri_(VT, N, NIsKill, TotalOffs);
         if (!N)
           return false;
@@ -5028,21 +5265,42 @@ bool AArch64FastISel::selectGetElementPtr(const Instruction *I) {
         return false;
 
       if (ElementSize != 1) {
+        
+        auto ZTData = I->getMetadata(ZTMetaDataKind);
+        errs() << "[AArch64FastISel::emitGetElementPtr]\tcalling fastEmit_i" <<
+          (ZTData != nullptr ? " with ZTData" : " without ZTData") << "\n";
+        
         unsigned C = fastEmit_i(VT, VT, ISD::Constant, ElementSize);
         if (!C)
           return false;
+
+        ZTData = I->getMetadata(ZTMetaDataKind);
+        errs() << "[AArch64FastISel::emitGetElementPtr]\tcalling emitMul_rr" <<
+        (ZTData != nullptr ? " with ZTData" : " without ZTData") << "\n"; 
+
         IdxN = emitMul_rr(VT, IdxN, IdxNIsKill, C, true);
         if (!IdxN)
           return false;
         IdxNIsKill = true;
       }
+
+      auto ZTData = I->getMetadata(ZTMetaDataKind);
+      errs() << "[AArch64FastISel::emitGetElementPtr]\tcalling fastEmit_rr" <<
+      (ZTData != nullptr ? " with ZTData" : " without ZTData") << "\n";
+
       N = fastEmit_rr(VT, VT, ISD::ADD, N, NIsKill, IdxN, IdxNIsKill);
       if (!N)
         return false;
     }
   }
   if (TotalOffs) {
-    N = emitAdd_ri_(VT, N, NIsKill, TotalOffs);
+
+    auto ZTData = I->getMetadata(ZTMetaDataKind);
+    errs() << "[AArch64FastISel::emitGetElementPtr]\tcalling emitAdd_ri_ (2)" <<
+    (ZTData != nullptr ? " with ZTData" : " without ZTData") << "\n";
+
+    //N = emitAdd_ri_(VT, N, NIsKill, TotalOffs);
+    N = emitAdd_ri_zt(VT, N, NIsKill, TotalOffs, ZTData);
     if (!N)
       return false;
   }

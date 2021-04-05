@@ -8,6 +8,8 @@
 #include "llvm/Pass.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include "../../Target/AArch64/AArch64Zt.h"
+
 using namespace llvm;
 
 #define DEBUG_TYPE "GepMDPass"
@@ -72,7 +74,12 @@ namespace
           {
             errs() << "\nGEP\t";
             I.dump();
-            errs().write_escaped(I.getOpcodeName(I.getOpcode()));
+
+            auto &C = F.getContext();
+            MDNode *N = MDNode::get(C, MDString::get(C, "Metadata"));
+            //MDNode *N = MDNode::get(C, MDString::get(C, "howdy"));
+            I.setMetadata(ZTMetaDataKind, N);
+            //errs().write_escaped(I.getOpcodeName(I.getOpcode()));
             errs() << "\n";
           }
         }
