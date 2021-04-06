@@ -381,8 +381,6 @@ void PassManagerBuilder::addFunctionSimplificationPasses(
   // Clean up after everything.
   addInstructionCombiningPass(MPM);
   addExtensionsToPM(EP_Peephole, MPM);
-
-  //MPM.add(createGepMDPass());
 }
 
 void PassManagerBuilder::populateModulePassManager(
@@ -809,9 +807,6 @@ void PassManagerBuilder::addLTOOptimizationPasses(legacy::PassManagerBase &PM) {
   addExtensionsToPM(EP_Peephole, PM);
 
   PM.add(createJumpThreadingPass());
-
-  // Add GEP metadata instrumentation pass
-  //PM.add(createGepMDPass());
 }
 
 void PassManagerBuilder::addLateLTOOptimizationPasses(

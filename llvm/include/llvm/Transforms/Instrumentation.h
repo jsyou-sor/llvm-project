@@ -102,7 +102,6 @@ ModulePass *createInstrProfilingLegacyPass(
 
 // Insert ZomTag instrumentation
 ModulePass *createZomTagPass();
-FunctionPass *createGepMDPass();
 
 // Insert AddressSanitizer (address sanity checking) instrumentation
 FunctionPass *createAddressSanitizerFunctionPass(bool CompileKernel = false,
