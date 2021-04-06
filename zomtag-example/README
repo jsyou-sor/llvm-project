@@ -5,3 +5,13 @@
      to transfer metadata in PARTS-style
   => too many calls to helper functions to update all of them
   => just make 'emitAdd' used helper functions
+
+04/06/2021
+- DONE
+  => able to cross-compile spec2006 for arm64 using clang
+  => integration of IR + backend pass on default clang
+- TODO
+  => check whether compiled spec2006 executable runs on ORDROID board
+  => implement other functions called within AArch64FastISel::selectGetElementPtr
+     [e.g.] fastEmit_rr, etc.
+  => need to implement functions for every path taken to emit GEP instruction
