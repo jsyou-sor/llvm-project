@@ -167,6 +167,11 @@ static void addBoundsCheckingPass(const PassManagerBuilder &Builder,
   PM.add(createBoundsCheckingPass());
 }
 
+static void addZomtagMetaDataPass(const PassManagerBuilder &Builder,
+                                  legacy::PassManagerBase &PM) {
+  PM.add(createZomtagMetaDataPass());
+}
+
 static void addSanitizerCoveragePass(const PassManagerBuilder &Builder,
                                      legacy::PassManagerBase &PM) {
   const PassManagerBuilderWrapper &BuilderWrapper =
@@ -261,6 +266,12 @@ static void addZomTagPass(const PassManagerBuilder &Builder,
   PM.add(createZomTagPass());
 }
 */
+
+static void addGepMDPass(const PassManagerBuilder &Builder,
+                         legacy::PassManagerBase &PM)
+{
+  //PM.add(createGepMDPass());
+}
 
 static TargetLibraryInfoImpl *createTLII(llvm::Triple &TargetTriple,
                                          const CodeGenOptions &CodeGenOpts) {
@@ -369,6 +380,9 @@ void EmitAssemblyHelper::CreatePasses(legacy::PassManager &MPM,
                            addBoundsCheckingPass);
   }
 
+  PMBuilder.addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0,
+                         addZomtagMetaDataPass);
+
   if (CodeGenOpts.SanitizeCoverageType ||
       CodeGenOpts.SanitizeCoverageIndirectCalls ||
       CodeGenOpts.SanitizeCoverageTraceCmp) {
@@ -431,6 +445,9 @@ void EmitAssemblyHelper::CreatePasses(legacy::PassManager &MPM,
                            addZomTagPass);
   }
 */
+
+  //PMBuilder.addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0,
+                         //addGepMDPass);
 
   // Set up the per-function pass manager.
   FPM.add(new TargetLibraryInfoWrapperPass(*TLII));

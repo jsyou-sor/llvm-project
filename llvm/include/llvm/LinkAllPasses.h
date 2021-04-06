@@ -71,6 +71,9 @@ namespace {
       (void) llvm::createTypeBasedAAWrapperPass();
       (void) llvm::createScopedNoAliasAAWrapperPass();
       (void) llvm::createBoundsCheckingPass();
+      
+      (void) llvm::createZomtagMetaDataPass();
+      
       (void) llvm::createBreakCriticalEdgesPass();
       (void) llvm::createCallGraphDOTPrinterPass();
       (void) llvm::createCallGraphViewerPass();
@@ -203,6 +206,8 @@ namespace {
       (void) llvm::createMemDerefPrinter();
       (void) llvm::createFloat2IntPass();
       (void) llvm::createEliminateAvailableExternallyPass();
+
+      //(void) llvm::createGepMDPass();
 
       (void)new llvm::IntervalPartition();
       (void)new llvm::ScalarEvolutionWrapperPass();

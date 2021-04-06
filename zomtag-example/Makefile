@@ -12,10 +12,11 @@ CLANGPP     := ${LLVM}/bin/clang++
 LLC         := ${LLVM}/bin/llc
 GCC         := ${LINARO_GCC}/bin/aarch64-linux-gnu-gcc
 
-CFLAGS += -Xclang -load -Xclang /home/jsyou/zomtag/build/lib/LLVMGepMDPass.*
+#CFLAGS += -Xclang -load -Xclang /home/jsyou/zomtag/build/lib/LLVMGepMDPass.*
 CFLAGS += -O0
 CFLAGS += --target=aarch64-linux-gnu
 CFLAGS += -march=armv8.2a
+CFLAGS += -mfloat-abi=hard
 CFLAGS += -I${SYSROOT}/usr/include
 CFLAGS += -B$(LINARO_GCC)
 CFLAGS += -Wall
@@ -51,9 +52,10 @@ $(BIN:=.s): %.s : %.linked.opt.ll
 	$(LLC) $(LLC_FLAGS) $< -o $@
 
 test:
-	${CLANG} -emit-llvm -o test.bc -c test.c
-	${LLVM_OPT} -load ../../build/lib/LLVMGepMDPass.so -gep-md-pass test.bc -o test.opt.bc
-	${CLANG} ${CFLAGS} -o test test.opt.bc
+	#${CLANG} -emit-llvm -o test.bc -c test.c
+	#${LLVM_OPT} -load ../../build/lib/LLVMGepMDPass.so -gep-md-pass test.bc -o test.opt.bc
+	#${CLANG} ${CFLAGS} -o test test.opt.bc
+	${CLANG} ${CFLAGS} -o test test.c
 
 .PHONY: dis
 dis: $(BIN:=.linked.ll) $(BIN=.linked.opt.ll) $(BIN:=.s)

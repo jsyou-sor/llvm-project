@@ -102,6 +102,7 @@ ModulePass *createInstrProfilingLegacyPass(
 
 // Insert ZomTag instrumentation
 ModulePass *createZomTagPass();
+FunctionPass *createGepMDPass();
 
 // Insert AddressSanitizer (address sanity checking) instrumentation
 FunctionPass *createAddressSanitizerFunctionPass(bool CompileKernel = false,
@@ -174,6 +175,8 @@ inline ModulePass *createDataFlowSanitizerPassForJIT(
 // BoundsChecking - This pass instruments the code to perform run-time bounds
 // checking on loads, stores, and other memory intrinsics.
 FunctionPass *createBoundsCheckingPass();
+
+FunctionPass *createZomtagMetaDataPass();
 
 /// \brief Calculate what to divide by to scale counts.
 ///

@@ -77,6 +77,7 @@ void initializeBasicAAWrapperPassPass(PassRegistry&);
 void initializeBlockExtractorPassPass(PassRegistry&);
 void initializeBlockFrequencyInfoWrapperPassPass(PassRegistry&);
 void initializeBoundsCheckingPass(PassRegistry&);
+void initializeZomtagMetaDataPass(PassRegistry&);
 void initializeBranchFolderPassPass(PassRegistry&);
 void initializeBranchProbabilityInfoWrapperPassPass(PassRegistry&);
 void initializeBranchRelaxationPass(PassRegistry&);
@@ -357,6 +358,8 @@ void initializeWinEHPreparePass(PassRegistry&);
 void initializeWriteBitcodePassPass(PassRegistry &);
 void initializeWriteThinLTOBitcodePass(PassRegistry &);
 void initializeXRayInstrumentationPass(PassRegistry &);
+
+void initializeGepMDPass(PassRegistry &);
 }
 
 #endif

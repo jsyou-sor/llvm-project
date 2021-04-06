@@ -7,6 +7,7 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Transforms/Instrumentation.h"
 
 #include "../../Target/AArch64/AArch64Zt.h"
 
@@ -16,10 +17,13 @@ using namespace llvm;
 
 namespace
 {
-  struct GepMDPass : public FunctionPass
+  struct GepMD : public FunctionPass
   {
     static char ID;
-    GepMDPass() : FunctionPass(ID) {}
+    GepMD() : FunctionPass(ID)
+    {
+      initializeGepMDPass(*PassRegistry::getPassRegistry());    
+    }
 
     bool runOnFunction(Function &F) override
     {
@@ -89,5 +93,13 @@ namespace
   };
 }
 
-char GepMDPass::ID = 0;
-static RegisterPass<GepMDPass> X("gep-md-pass", "GetElementPtr Metadata Pass");
+char GepMD::ID = 0;
+INITIALIZE_PASS(GepMD, "gep-metadata-pass", "gep metadata pass", false, false)
+//static RegisterPass<GepMDPass> X("gep-md-pass", "GetElementPtr Metadata Pass");
+
+FunctionPass *llvm::createGepMDPass()
+{
+  return new GepMD();
+}
+//INITIALIZE_PASS_BEGIN(GepMDPass, "gep-metadata-pass", "gep metadata pass", false, false);
+//INITIALIZE_PASS_END(GepMDPass, "gep-metadata-pass", "gep metadata pass", false, false);
