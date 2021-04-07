@@ -68,11 +68,14 @@ static void transferImpOps(MachineInstr &OldMI, MachineInstrBuilder &UseMI,
   for (unsigned i = Desc.getNumOperands(), e = OldMI.getNumOperands(); i != e;
        ++i) {
     const MachineOperand &MO = OldMI.getOperand(i);
-    assert(MO.isReg() && MO.getReg());
-    if (MO.isUse())
-      UseMI.addOperand(MO);
-    else
-      DefMI.addOperand(MO);
+    if (!MO.isMetadata())
+    {
+      assert(MO.isReg() && MO.getReg());
+      if (MO.isUse())
+        UseMI.addOperand(MO);
+      else
+        DefMI.addOperand(MO);
+    }
   }
 }
 

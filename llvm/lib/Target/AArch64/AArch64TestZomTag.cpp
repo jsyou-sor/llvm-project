@@ -81,11 +81,12 @@ bool TestZomTag::runOnMachineFunction(MachineFunction &MF)
 
       if (isAddSub(MI))
       {
-        errs() << "found " << TII->getName(MI.getOpcode()) << "\n";
+        //errs() << "found " << TII->getName(MI.getOpcode()) << "\n";
         auto op_src = MI.getOperand(MI.getNumOperands() - 1);
-        errs() << "\t\top_src is ";
-        errs() << (op_src.isMetadata() ? "(metadata)" : "(non-metadata) ");
-        op_src.dump();
+        //errs() << "\t\top_src is ";
+        //errs() << (op_src.isMetadata() ? "(metadata)" : "(non-metadata) ");
+        if (op_src.isMetadata())
+          MI.dump();
       }
     }
   }
