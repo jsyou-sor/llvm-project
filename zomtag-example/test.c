@@ -1,14 +1,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+struct TestStruct {
+  int a;
+  int b;
+  int *ptr;
+};
+
 int main()
 {
   printf("Starting TEST program...\n");
   void *p = malloc(256);
-  void *q = NULL;
+  struct TestStruct *q = malloc(sizeof(struct TestStruct));
+  void *r;
+  void *s;
 
-  q = p + 100;
-  printf("p: %p\nq: %p\n", p, q);
+  r = q->ptr;
+  s = p + 100;
+
+  printf("p: %p\nq: %p\nr: %p\n", p, q, r);
 
   printf("TEST done...\n");
 

@@ -1344,7 +1344,7 @@ unsigned AArch64FastISel::emitAddSub_rr_zt(bool UseAdd, MVT RetVT, unsigned LHSR
     auto &C = FuncInfo.Fn->getContext();
     MIB.addMetadata(MDNode::get(C, ZTData));
   } else {
-    errs() << "[AArch64FastISel::emitAddSub_rr_zt]\tno metadata when emitting ADD\n"; 
+    //errs() << "[AArch64FastISel::emitAddSub_rr_zt]\tno metadata when emitting ADD\n"; 
   }
   
   return ResultReg;
@@ -5091,16 +5091,16 @@ bool AArch64FastISel::selectGetElementPtr(const Instruction *I) {
       if (ElementSize != 1) {
         
         auto ZTData = I->getMetadata(ZTMetaDataKind);
-        errs() << "[AArch64FastISel::selectGetElementPtr]\tcalling fastEmit_i" <<
-          (ZTData != nullptr ? " with ZTData" : " without ZTData") << "\n";
+        //errs() << "[AArch64FastISel::selectGetElementPtr]\tcalling fastEmit_i" <<
+          //(ZTData != nullptr ? " with ZTData" : " without ZTData") << "\n";
         
         unsigned C = fastEmit_i(VT, VT, ISD::Constant, ElementSize);
         if (!C)
           return false;
 
         ZTData = I->getMetadata(ZTMetaDataKind);
-        errs() << "[AArch64FastISel::selectGetElementPtr]\tcalling emitMul_rr" <<
-        (ZTData != nullptr ? " with ZTData" : " without ZTData") << "\n"; 
+        //errs() << "[AArch64FastISel::selectGetElementPtr]\tcalling emitMul_rr" <<
+        //(ZTData != nullptr ? " with ZTData" : " without ZTData") << "\n"; 
 
         IdxN = emitMul_rr(VT, IdxN, IdxNIsKill, C, true);
         if (!IdxN)
@@ -5109,10 +5109,12 @@ bool AArch64FastISel::selectGetElementPtr(const Instruction *I) {
       }
 
       auto ZTData = I->getMetadata(ZTMetaDataKind);
-      errs() << "[AArch64FastISel::selectGetElementPtr]\tcalling fastEmit_rr" <<
-      (ZTData != nullptr ? " with ZTData" : " without ZTData") << "\n";
-
-      N = fastEmit_rr(VT, VT, ISD::ADD, N, NIsKill, IdxN, IdxNIsKill);
+      //errs() << "[AArch64FastISel::selectGetElementPtr]\tcalling fastEmit_rr" <<
+      //(ZTData != nullptr ? " with ZTData" : " without ZTData") << "\n";
+      
+      //N = fastEmit_rr(VT, VT, ISD::ADD, N, NIsKill, IdxN, IdxNIsKill);
+      N = emitAddSub_rr_zt(true, VT, N, NIsKill, IdxN, IdxNIsKill, false, true, ZTData);
+      //errs() << "[AArch64FastISel::selectGetElementPtr]\tfastEmit_rr ret N = " << N << " ret M = " << M << "\n";
       if (!N)
         return false;
     }
@@ -5120,8 +5122,8 @@ bool AArch64FastISel::selectGetElementPtr(const Instruction *I) {
   if (TotalOffs) {
 
     auto ZTData = I->getMetadata(ZTMetaDataKind);
-    errs() << "[AArch64FastISel::selectGetElementPtr]\tcalling emitAdd_ri_ (2)" <<
-    (ZTData != nullptr ? " with ZTData" : " without ZTData") << "\n";
+    //errs() << "[AArch64FastISel::selectGetElementPtr]\tcalling emitAdd_ri_ (2)" <<
+    //(ZTData != nullptr ? " with ZTData" : " without ZTData") << "\n";
 
     //N = emitAdd_ri_(VT, N, NIsKill, TotalOffs);
     N = emitAdd_ri_zt(VT, N, NIsKill, TotalOffs, ZTData);

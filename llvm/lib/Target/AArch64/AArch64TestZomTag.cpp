@@ -60,8 +60,8 @@ bool TestZomTag::doInitialization(Module &M)
 
 bool TestZomTag::runOnMachineFunction(MachineFunction &MF)
 {
-  DEBUG(dbgs() << getPassName() << '\n');
-  errs() << "function " << MF.getName() << '\n';
+  //DEBUG(dbgs() << getPassName() << '\n');
+  //errs() << "function " << MF.getName() << '\n';
 
   TM = &MF.getTarget();
   STI = &MF.getSubtarget<AArch64Subtarget>();
@@ -85,7 +85,19 @@ bool TestZomTag::runOnMachineFunction(MachineFunction &MF)
         auto op_src = MI.getOperand(MI.getNumOperands() - 1);
         //errs() << "\t\top_src is ";
         //errs() << (op_src.isMetadata() ? "(metadata)" : "(non-metadata) ");
-        if (op_src.isMetadata())
+        //if (op_src.isMetadata() &&
+        if ( 
+            ((MI.getOpcode() == AArch64::ADDXrr) ||
+            (MI.getOpcode() == AArch64::ADDWrr) ||
+            (MI.getOpcode() == AArch64::ADDSXrr) ||
+            (MI.getOpcode() == AArch64::ADDSWrr) ||
+            (MI.getOpcode() == AArch64::SUBXrr) ||
+            (MI.getOpcode() == AArch64::SUBWrr) ||
+            (MI.getOpcode() == AArch64::SUBSXrr) ||
+            (MI.getOpcode() == AArch64::SUBSWrr)) 
+        )
+          MI.dump();
+        if (MI.getOperand(MI.getNumOperands() - 1).isMetadata())
           MI.dump();
       }
     }
