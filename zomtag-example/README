@@ -15,3 +15,12 @@
   => implement other functions called within AArch64FastISel::selectGetElementPtr
      [e.g.] fastEmit_rr, etc.
   => need to implement functions for every path taken to emit GEP instruction
+
+04/09/2021
+- DONE
+  => found register offset LDR insts.
+  => move utility functions for cleanup
+  => checkout every functions taken from selectGetElementPtr
+- TODO
+  => check on OrdroidC4 board (spec2006 executable)
+  => study LDR (register offset) extend, amount (UXTW, LSL, SXTW, SXTX) + opcode when its used
