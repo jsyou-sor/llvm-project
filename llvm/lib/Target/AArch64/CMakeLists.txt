@@ -67,6 +67,7 @@ add_llvm_target(AArch64CodeGen
   AArch64TargetTransformInfo.cpp
   AArch64VectorByElementOpt.cpp
   AArch64TestZomTag.cpp
+  AArch64ZomTagUtils.cpp
   ${GLOBAL_ISEL_BUILD_FILES}
 
   DEPENDS

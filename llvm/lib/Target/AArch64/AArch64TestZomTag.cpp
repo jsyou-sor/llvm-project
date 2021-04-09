@@ -14,6 +14,8 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include "AArch64ZomTagUtils.h"
+
 #define DEBUG_TYPE "aarch64-zomtag"
 
 using namespace llvm;
@@ -36,8 +38,11 @@ namespace
       const TargetMachine *TM = nullptr;
       const AArch64Subtarget *STI = nullptr;
       const AArch64InstrInfo *TII = nullptr;
+      const AArch64RegisterInfo *TRI = nullptr;
 
-      bool isLoad(MachineInstr &MI);
+      ZomTagUtils_ptr zomtagUtils = nullptr;
+
+      //bool isLoad(MachineInstr &MI);
       bool isStore(MachineInstr &MI);
       bool isAddSub(MachineInstr &MI);
   };
@@ -61,12 +66,15 @@ bool TestZomTag::doInitialization(Module &M)
 bool TestZomTag::runOnMachineFunction(MachineFunction &MF)
 {
   //DEBUG(dbgs() << getPassName() << '\n');
-  //errs() << "function " << MF.getName() << '\n';
+  errs() << "function " << MF.getName() << '\n';
 
   TM = &MF.getTarget();
   STI = &MF.getSubtarget<AArch64Subtarget>();
   TII = STI->getInstrInfo();
+  TRI = STI->getRegisterInfo();
 
+  zomtagUtils = ZomTagUtils::get(TRI, TII);
+  
   unsigned opcode = 0;
   unsigned scale;
   unsigned width;
@@ -99,6 +107,16 @@ bool TestZomTag::runOnMachineFunction(MachineFunction &MF)
           MI.dump();
         if (MI.getOperand(MI.getNumOperands() - 1).isMetadata())
           MI.dump();
+      }
+      if (zomtagUtils->isLoad(MI))
+      {
+        if (MI.getOperand(0).isReg() &&
+            MI.getOperand(1).isReg() &&
+            MI.getOperand(2).isReg())
+        {
+          if (MI.getOpcode() != AArch64::LDPXi && MI.getOpcode() != AArch64::LDPWi)
+            MI.dump();
+        }
       }
     }
   }
@@ -144,6 +162,7 @@ bool TestZomTag::isStore(MachineInstr &MI)
   }
 }
 
+/*
 bool TestZomTag::isLoad(MachineInstr &MI)
 {
   switch(MI.getOpcode())
@@ -188,6 +207,7 @@ bool TestZomTag::isLoad(MachineInstr &MI)
       return true;
   }
 }
+*/
 
 bool TestZomTag::isAddSub(MachineInstr &MI)
 {

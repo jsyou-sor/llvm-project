@@ -54,4 +54,4 @@ dis: $(BIN:=.linked.ll) $(BIN=.linked.opt.ll) $(BIN:=.s)
 
 .PHONY: clean
 clean::
-	rm -rf $(CLEAN_FILES) *.bc *.o *.s $(BIN) $(BIN) *.linked_bc *.ll *.dump a.out example hello test
+	rm -rf $(CLEAN_FILES) *.asm *.bc *.o *.s $(BIN) $(BIN) *.linked_bc *.ll *.dump a.out example hello test
