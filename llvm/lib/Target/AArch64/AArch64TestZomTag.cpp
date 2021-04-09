@@ -74,12 +74,6 @@ bool TestZomTag::runOnMachineFunction(MachineFunction &MF)
   TRI = STI->getRegisterInfo();
 
   zomtagUtils = ZomTagUtils::get(TRI, TII);
-  
-  unsigned opcode = 0;
-  unsigned scale;
-  unsigned width;
-  int64_t min_offset;
-  int64_t max_offset;
 
   for (auto &MBB : MF)
   {
@@ -114,8 +108,14 @@ bool TestZomTag::runOnMachineFunction(MachineFunction &MF)
             MI.getOperand(1).isReg() &&
             MI.getOperand(2).isReg())
         {
+          // TODO:
+          // Add condition to filter LDP (Load Pair) instructions
           if (MI.getOpcode() != AArch64::LDPXi && MI.getOpcode() != AArch64::LDPWi)
-            MI.dump();
+          {
+            const auto offset_reg = MI.getOperand(2).getReg();
+            if (zomtagUtils->isXReg(offset_reg))
+              MI.dump();
+          }
         }
       }
     }

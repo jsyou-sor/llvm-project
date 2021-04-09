@@ -8,6 +8,47 @@ ZomTagUtils::ZomTagUtils(const TargetRegisterInfo *TRI,
 {
 };
 
+bool ZomTagUtils::isXReg(const unsigned reg)
+{
+  switch(reg)
+  {
+    default:
+      return false;
+    case AArch64::X0:
+    case AArch64::X1:
+    case AArch64::X2:
+    case AArch64::X3:
+    case AArch64::X4:
+    case AArch64::X5:
+    case AArch64::X6:
+    case AArch64::X7:
+    case AArch64::X8:
+    case AArch64::X9:
+    case AArch64::X10:
+    case AArch64::X11:
+    case AArch64::X12:
+    case AArch64::X13:
+    case AArch64::X14:
+    case AArch64::X15:
+    case AArch64::X16:
+    case AArch64::X17:
+    case AArch64::X18:
+    case AArch64::X19:
+    case AArch64::X20:
+    case AArch64::X21:
+    case AArch64::X22:
+    case AArch64::X23:
+    case AArch64::X24:
+    case AArch64::X25:
+    case AArch64::X26:
+    case AArch64::X27:
+    case AArch64::X28:
+    case AArch64::FP:   // X29
+    case AArch64::LR:   // X30
+      return true;
+  }
+}
+
 bool ZomTagUtils::isLoad(const MachineInstr &MI)
 {
   const auto opCode = MI.getOpcode();
