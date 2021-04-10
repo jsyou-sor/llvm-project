@@ -28,8 +28,10 @@ namespace llvm
     bool isXReg(const unsigned reg);
     bool isLoad(const MachineInstr &MI);
     unsigned getCorrespondingLoad(const unsigned opCode);
+    unsigned getCorrespondingStore(const unsigned opCode);
     unsigned getCorrespondingReg(const unsigned XReg);
     bool isInterestingLoad(const MachineInstr &MI);
+    bool isInterestingStore(const MachineInstr &MI);
   };
 }
 

@@ -24,3 +24,13 @@
 - TODO
   => check on OrdroidC4 board (spec2006 executable)
   => study LDR (register offset) extend, amount (UXTW, LSL, SXTW, SXTX) + opcode when its used
+
+04/10/2021
+- DONE
+  => insert corresponding instructions for register offset LDRs
+  => insert corresponding instructions for register offset STRs
+- TODO
+  => check correct execution when original inst. are removed
+  => check inserted instructions' results are the same compared to original insts.
+  => check whether there are other instructions postfixed with "roX"
+  => same for STRs

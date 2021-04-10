@@ -8,6 +8,44 @@ ZomTagUtils::ZomTagUtils(const TargetRegisterInfo *TRI,
 {
 };
 
+unsigned ZomTagUtils::getCorrespondingStore(const unsigned opCode)
+{
+  switch(opCode)
+  {
+    default:
+      return opCode;
+    case AArch64::STRBBroX:
+      return AArch64::STRBBroW;
+    case AArch64::STRHHroX:
+      return AArch64::STRHHroW;
+    case AArch64::STRWroX:
+      return AArch64::STRWroW;
+    case AArch64::STRXroX:
+      return AArch64::STRXroW;
+    case AArch64::STRSroX:
+      return AArch64::STRSroW;
+    case AArch64::STRDroX:
+      return AArch64::STRDroW; 
+  }
+}
+
+bool ZomTagUtils::isInterestingStore(const MachineInstr &MI)
+{
+  const auto opCode = MI.getOpcode();
+  switch(opCode)
+  {
+    default:
+      return false;
+    case AArch64::STRBBroX:
+    case AArch64::STRHHroX:
+    case AArch64::STRWroX:
+    case AArch64::STRXroX:
+    case AArch64::STRSroX:
+    case AArch64::STRDroX:
+      return true;
+  }
+}
+
 bool ZomTagUtils::isInterestingLoad(const MachineInstr &MI)
 {
   const auto opCode = MI.getOpcode();

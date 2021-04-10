@@ -42,14 +42,9 @@ namespace
 
       ZomTagUtils_ptr zomtagUtils = nullptr;
 
-      //bool isLoad(MachineInstr &MI);
-      bool isStore(MachineInstr &MI);
       bool isAddSub(MachineInstr &MI);
   };
-  //char TestZomTag::ID = 0;
 } // end anonymous namespace
-
-//INITIALIZE_PASS(TestZomTag, "aarch64-zomtag-pass", "AArch64 test zomtag pass", false, false)
 
 FunctionPass *llvm::createAArch64TestZomTagPass()
 {
@@ -77,135 +72,43 @@ bool TestZomTag::runOnMachineFunction(MachineFunction &MF)
 
   for (auto &MBB : MF)
   {
-    //for (auto &MI : MBB)
     for (auto MIi = MBB.instr_begin(); MIi != MBB.instr_end(); MIi++)
     {
-/*
-      if (isAddSub(MI))
-      {
-        auto op_src = MI.getOperand(MI.getNumOperands() - 1);
-        if ( 
-            ((MI.getOpcode() == AArch64::ADDXrr) ||
-            (MI.getOpcode() == AArch64::ADDWrr) ||
-            (MI.getOpcode() == AArch64::ADDSXrr) ||
-            (MI.getOpcode() == AArch64::ADDSWrr) ||
-            (MI.getOpcode() == AArch64::SUBXrr) ||
-            (MI.getOpcode() == AArch64::SUBWrr) ||
-            (MI.getOpcode() == AArch64::SUBSXrr) ||
-            (MI.getOpcode() == AArch64::SUBSWrr)) 
-        )
-          MI.dump();
-        if (MI.getOperand(MI.getNumOperands() - 1).isMetadata())
-          MI.dump();
-      }
-*/
+      //if (MIi->getOperand(MIi->getNumOperands() - 1).isMetadata())
+        //MI.dump();
+      
       if (zomtagUtils->isInterestingLoad(*MIi))
       {
-        if (MIi->getOpcode() == AArch64::LDRBBroX)
-        {
-          MIi->dump();
-          const auto &DL = MIi->getDebugLoc();
-          const auto op = zomtagUtils->getCorrespondingLoad(MIi->getOpcode());
-          const unsigned dst = MIi->getOperand(0).getReg();
-          const unsigned src = MIi->getOperand(1).getReg();
-          const unsigned off_x = MIi->getOperand(2).getReg();
-          const unsigned off_w = zomtagUtils->getCorrespondingReg(off_x);
-          const int64_t ext = MIi->getOperand(3).getImm();
-          const int64_t amount = MIi->getOperand(4).getImm();
+        //MIi->dump();
+        const auto &DL = MIi->getDebugLoc();
+        const auto op = zomtagUtils->getCorrespondingLoad(MIi->getOpcode());
+        const unsigned dst = MIi->getOperand(0).getReg();
+        const unsigned src = MIi->getOperand(1).getReg();
+        const unsigned off_x = MIi->getOperand(2).getReg();
+        const unsigned off_w = zomtagUtils->getCorrespondingReg(off_x);
+        const int64_t ext = MIi->getOperand(3).getImm();
+        const int64_t amount = MIi->getOperand(4).getImm();
 
-          BuildMI(MBB, MIi, DL, TII->get(op),dst).addReg(src).addReg(off_w).addImm(ext).addImm(amount);
-        }
+        BuildMI(MBB, MIi, DL, TII->get(op),dst).addReg(src).addReg(off_w).addImm(ext).addImm(amount);
+      }
+      if (zomtagUtils->isInterestingStore(*MIi))
+      {
+        MIi->dump();
+        const auto &DL = MIi->getDebugLoc();
+        const auto op = zomtagUtils->getCorrespondingStore(MIi->getOpcode());
+        const unsigned dst = MIi->getOperand(0).getReg();
+        const unsigned src = MIi->getOperand(1).getReg();
+        const unsigned off_x = MIi->getOperand(2).getReg();
+        const unsigned off_w = zomtagUtils->getCorrespondingReg(off_x);
+        const int64_t ext = MIi->getOperand(3).getImm();
+        const int64_t amount = MIi->getOperand(4).getImm();
+
+        BuildMI(MBB, MIi, DL, TII->get(op), dst).addReg(src).addReg(off_w).addImm(ext).addImm(amount);
       }
     }
   }
   return true;
 }
-
-bool TestZomTag::isStore(MachineInstr &MI)
-{
-  switch(MI.getOpcode())
-  {
-    default:
-      return false;
-    case AArch64::STRWpost:
-    case AArch64::STURQi:
-    case AArch64::STURXi:
-    case AArch64::STURDi:
-    case AArch64::STURWi:
-    case AArch64::STURSi:
-    case AArch64::STURHi:
-    case AArch64::STURHHi:
-    case AArch64::STURBi:
-    case AArch64::STURBBi:
-    case AArch64::STPQi:
-    case AArch64::STNPQi:
-    case AArch64::STRQui:
-    case AArch64::STPXi:
-    case AArch64::STPDi:
-    case AArch64::STNPXi:
-    case AArch64::STNPDi:
-    case AArch64::STRXui:
-    case AArch64::STRDui:
-    case AArch64::STPWi:
-    case AArch64::STPSi:
-    case AArch64::STNPWi:
-    case AArch64::STNPSi:
-    case AArch64::STRWui:
-    case AArch64::STRSui:
-    case AArch64::STRHui:
-    case AArch64::STRHHui:
-    case AArch64::STRBui:
-    case AArch64::STRBBui:
-      return true;
-  }
-}
-
-/*
-bool TestZomTag::isLoad(MachineInstr &MI)
-{
-  switch(MI.getOpcode())
-  {
-    default:
-      return false;
-    case AArch64::LDPXi:
-    case AArch64::LDPDi:
-    case AArch64::LDRWpost:
-    case AArch64::LDURQi:
-    case AArch64::LDURXi:
-    case AArch64::LDURDi:
-    case AArch64::LDURWi:
-    case AArch64::LDURSi:
-    case AArch64::LDURSWi:
-    case AArch64::LDURHi:
-    case AArch64::LDURHHi:
-    case AArch64::LDURSHXi:
-    case AArch64::LDURSHWi:
-    case AArch64::LDURBi:
-    case AArch64::LDURBBi:
-    case AArch64::LDURSBXi:
-    case AArch64::LDURSBWi:
-    case AArch64::LDPQi:
-    case AArch64::LDNPQi:
-    case AArch64::LDRQui:
-    case AArch64::LDNPXi:
-    case AArch64::LDNPDi:
-    case AArch64::LDRXui:
-    case AArch64::LDRDui:
-    case AArch64::LDPWi:
-    case AArch64::LDPSi:
-    case AArch64::LDNPWi:
-    case AArch64::LDNPSi:
-    case AArch64::LDRWui:
-    case AArch64::LDRSui:
-    case AArch64::LDRSWui:
-    case AArch64::LDRHui:
-    case AArch64::LDRHHui:
-    case AArch64::LDRBui:
-    case AArch64::LDRBBui:
-      return true;
-  }
-}
-*/
 
 bool TestZomTag::isAddSub(MachineInstr &MI)
 {
