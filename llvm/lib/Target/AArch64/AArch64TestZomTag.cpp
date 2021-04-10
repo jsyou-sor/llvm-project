@@ -77,17 +77,13 @@ bool TestZomTag::runOnMachineFunction(MachineFunction &MF)
 
   for (auto &MBB : MF)
   {
-    for (auto &MI : MBB)
+    //for (auto &MI : MBB)
+    for (auto MIi = MBB.instr_begin(); MIi != MBB.instr_end(); MIi++)
     {
-      //MI.dump();
-
+/*
       if (isAddSub(MI))
       {
-        //errs() << "found " << TII->getName(MI.getOpcode()) << "\n";
         auto op_src = MI.getOperand(MI.getNumOperands() - 1);
-        //errs() << "\t\top_src is ";
-        //errs() << (op_src.isMetadata() ? "(metadata)" : "(non-metadata) ");
-        //if (op_src.isMetadata() &&
         if ( 
             ((MI.getOpcode() == AArch64::ADDXrr) ||
             (MI.getOpcode() == AArch64::ADDWrr) ||
@@ -102,20 +98,22 @@ bool TestZomTag::runOnMachineFunction(MachineFunction &MF)
         if (MI.getOperand(MI.getNumOperands() - 1).isMetadata())
           MI.dump();
       }
-      if (zomtagUtils->isLoad(MI))
+*/
+      if (zomtagUtils->isInterestingLoad(*MIi))
       {
-        if (MI.getOperand(0).isReg() &&
-            MI.getOperand(1).isReg() &&
-            MI.getOperand(2).isReg())
+        if (MIi->getOpcode() == AArch64::LDRBBroX)
         {
-          // TODO:
-          // Add condition to filter LDP (Load Pair) instructions
-          if (MI.getOpcode() != AArch64::LDPXi && MI.getOpcode() != AArch64::LDPWi)
-          {
-            const auto offset_reg = MI.getOperand(2).getReg();
-            if (zomtagUtils->isXReg(offset_reg))
-              MI.dump();
-          }
+          MIi->dump();
+          const auto &DL = MIi->getDebugLoc();
+          const auto op = zomtagUtils->getCorrespondingLoad(MIi->getOpcode());
+          const unsigned dst = MIi->getOperand(0).getReg();
+          const unsigned src = MIi->getOperand(1).getReg();
+          const unsigned off_x = MIi->getOperand(2).getReg();
+          const unsigned off_w = zomtagUtils->getCorrespondingReg(off_x);
+          const int64_t ext = MIi->getOperand(3).getImm();
+          const int64_t amount = MIi->getOperand(4).getImm();
+
+          BuildMI(MBB, MIi, DL, TII->get(op),dst).addReg(src).addReg(off_w).addImm(ext).addImm(amount);
         }
       }
     }
