@@ -32,6 +32,7 @@ namespace llvm
     unsigned getCorrespondingReg(const unsigned XReg);
     bool isInterestingLoad(const MachineInstr &MI);
     bool isInterestingStore(const MachineInstr &MI);
+    bool isRegisterOffsetLoad(const MachineInstr &MI);
   };
 }
 

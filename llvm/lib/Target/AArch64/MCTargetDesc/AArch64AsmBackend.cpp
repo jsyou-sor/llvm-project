@@ -146,7 +146,7 @@ static uint64_t adjustFixupValue(const MCFixup &Fixup, uint64_t Value,
     llvm_unreachable("Unknown fixup kind!");
   case AArch64::fixup_aarch64_pcrel_adr_imm21:
     if (Ctx && (SignedValue > 2097151 || SignedValue < -2097152))
-      Ctx->reportError(Fixup.getLoc(), "fixup value out of range");
+      Ctx->reportError(Fixup.getLoc(), "fixup value out of range 1");
     return AdrImmBits(Value & 0x1fffffULL);
   case AArch64::fixup_aarch64_pcrel_adrp_imm21:
     return AdrImmBits((Value & 0x1fffff000ULL) >> 12);
@@ -154,7 +154,7 @@ static uint64_t adjustFixupValue(const MCFixup &Fixup, uint64_t Value,
   case AArch64::fixup_aarch64_pcrel_branch19:
     // Signed 21-bit immediate
     if (SignedValue > 2097151 || SignedValue < -2097152)
-      if (Ctx) Ctx->reportError(Fixup.getLoc(), "fixup value out of range");
+      if (Ctx) Ctx->reportError(Fixup.getLoc(), "fixup value out of range 2");
     if (Ctx && (Value & 0x3))
       Ctx->reportError(Fixup.getLoc(), "fixup not sufficiently aligned");
     // Low two bits are not encoded.
@@ -163,33 +163,33 @@ static uint64_t adjustFixupValue(const MCFixup &Fixup, uint64_t Value,
   case AArch64::fixup_aarch64_ldst_imm12_scale1:
     // Unsigned 12-bit immediate
     if (Ctx && Value >= 0x1000)
-      Ctx->reportError(Fixup.getLoc(), "fixup value out of range");
+      Ctx->reportError(Fixup.getLoc(), "fixup value out of range 3");
     return Value;
   case AArch64::fixup_aarch64_ldst_imm12_scale2:
     // Unsigned 12-bit immediate which gets multiplied by 2
     if (Ctx && (Value >= 0x2000))
-      Ctx->reportError(Fixup.getLoc(), "fixup value out of range");
+      Ctx->reportError(Fixup.getLoc(), "fixup value out of range 4");
     if (Ctx && (Value & 0x1))
       Ctx->reportError(Fixup.getLoc(), "fixup must be 2-byte aligned");
     return Value >> 1;
   case AArch64::fixup_aarch64_ldst_imm12_scale4:
     // Unsigned 12-bit immediate which gets multiplied by 4
     if (Ctx && (Value >= 0x4000))
-      Ctx->reportError(Fixup.getLoc(), "fixup value out of range");
+      Ctx->reportError(Fixup.getLoc(), "fixup value out of range 5");
     if (Ctx && (Value & 0x3))
       Ctx->reportError(Fixup.getLoc(), "fixup must be 4-byte aligned");
     return Value >> 2;
   case AArch64::fixup_aarch64_ldst_imm12_scale8:
     // Unsigned 12-bit immediate which gets multiplied by 8
     if (Ctx && (Value >= 0x8000))
-      Ctx->reportError(Fixup.getLoc(), "fixup value out of range");
+      Ctx->reportError(Fixup.getLoc(), "fixup value out of range 6");
     if (Ctx && (Value & 0x7))
       Ctx->reportError(Fixup.getLoc(), "fixup must be 8-byte aligned");
     return Value >> 3;
   case AArch64::fixup_aarch64_ldst_imm12_scale16:
     // Unsigned 12-bit immediate which gets multiplied by 16
     if (Ctx && (Value >= 0x10000))
-      Ctx->reportError(Fixup.getLoc(), "fixup value out of range");
+      Ctx->reportError(Fixup.getLoc(), "fixup value out of range 7");
     if (Ctx && (Value & 0xf))
       Ctx->reportError(Fixup.getLoc(), "fixup must be 16-byte aligned");
     return Value >> 4;
@@ -201,7 +201,7 @@ static uint64_t adjustFixupValue(const MCFixup &Fixup, uint64_t Value,
   case AArch64::fixup_aarch64_pcrel_branch14:
     // Signed 16-bit immediate
     if (Ctx && (SignedValue > 32767 || SignedValue < -32768))
-      Ctx->reportError(Fixup.getLoc(), "fixup value out of range");
+      Ctx->reportError(Fixup.getLoc(), "fixup value out of range 8");
     // Low two bits are not encoded (4-byte alignment assumed).
     if (Ctx && (Value & 0x3))
       Ctx->reportError(Fixup.getLoc(), "fixup not sufficiently aligned");
@@ -210,7 +210,7 @@ static uint64_t adjustFixupValue(const MCFixup &Fixup, uint64_t Value,
   case AArch64::fixup_aarch64_pcrel_call26:
     // Signed 28-bit immediate
     if (Ctx && (SignedValue > 134217727 || SignedValue < -134217728))
-      Ctx->reportError(Fixup.getLoc(), "fixup value out of range");
+      Ctx->reportError(Fixup.getLoc(), "fixup value out of range 9");
     // Low two bits are not encoded (4-byte alignment assumed).
     if (Ctx && (Value & 0x3))
       Ctx->reportError(Fixup.getLoc(), "fixup not sufficiently aligned");

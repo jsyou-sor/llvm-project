@@ -487,6 +487,8 @@ void AArch64PassConfig::addPostRegAlloc() {
   if (TM->getOptLevel() != CodeGenOpt::None && usingDefaultRegAlloc())
     // Improve performance for some FP/SIMD code for A57.
     addPass(createAArch64A57FPLoadBalancing());
+
+  addPass(createAArch64TestZomTagPass());
 }
 
 void AArch64PassConfig::addPreSched2() {
@@ -509,5 +511,5 @@ void AArch64PassConfig::addPreEmitPass() {
       TM->getTargetTriple().isOSBinFormatMachO())
     addPass(createAArch64CollectLOHPass());
   
-  addPass(createAArch64TestZomTagPass());
+  //addPass(createAArch64TestZomTagPass());
 }

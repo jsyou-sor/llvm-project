@@ -68,6 +68,28 @@ bool ZomTagUtils::isInterestingLoad(const MachineInstr &MI)
   }
 }
 
+bool ZomTagUtils::isRegisterOffsetLoad(const MachineInstr &MI)
+{
+  const auto opCode = MI.getOpcode();
+  switch(opCode)
+  {
+    default:
+      return false;
+    case AArch64::LDRSBWroW:
+    case AArch64::LDRSHWroW:
+    case AArch64::LDRWroW:
+    case AArch64::LDRXroW:
+    case AArch64::LDRSBXroW:
+    case AArch64::LDRSHXroW:
+    case AArch64::LDRSWroW:
+    case AArch64::LDRBBroW:
+    case AArch64::LDRHHroW:
+    case AArch64::LDRSroW:
+    case AArch64::LDRDroW:
+      return true; 
+  }
+}
+
 unsigned ZomTagUtils::getCorrespondingReg(const unsigned XReg)
 {
   switch(XReg)
