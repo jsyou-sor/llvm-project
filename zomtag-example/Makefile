@@ -26,7 +26,7 @@ CFLAGS += -fno-stack-protector
 CFLAGS += -D_FORTIFY_SOURCE=0
 CFLAGS += -static
 CFLAGS += -Wno-override-module
-
+CFLAGS += -fsanitize=safe-stack
 
 SOURCES ?= $(wildcard *.c)
 BIN ?= $(shell basename $(shell pwd)).out

@@ -108,11 +108,11 @@ bool TestZomTag::runOnMachineFunction(MachineFunction &MF)
         const int64_t ext = AArch64_AM::UXTW;
         const int64_t amount = MIi->getOperand(4).getImm();
 
-        BuildMI(MBB, MIi, DL, TII->get(op),dst).addReg(src).addReg(off_w).addImm(ext).addImm(amount);
+        //BuildMI(MBB, MIi, DL, TII->get(op),dst).addReg(src).addReg(off_w).addImm(ext).addImm(amount);
         
-        auto tmp = MIi;
-        MIi--;
-        tmp->removeFromParent();
+        //auto tmp = MIi;
+        //MIi--;
+        //tmp->removeFromParent();
          
         //MI->dump();
         //errs() << MI->getOperand(3).getImm() << "\n";
@@ -140,11 +140,11 @@ bool TestZomTag::runOnMachineFunction(MachineFunction &MF)
         const int64_t ext = MIi->getOperand(3).getImm();
         const int64_t amount = MIi->getOperand(4).getImm();
 
-        BuildMI(MBB, MIi, DL, TII->get(op), dst).addReg(src).addReg(off_w).addImm(ext).addImm(amount);
+        //BuildMI(MBB, MIi, DL, TII->get(op), dst).addReg(src).addReg(off_w).addImm(ext).addImm(amount);
       
-        auto tmp = MIi;
-        MIi--;
-        tmp->removeFromParent();
+        //auto tmp = MIi;
+        //MIi--;
+        //tmp->removeFromParent();
       }
     }
   }
