@@ -71,6 +71,8 @@ add_llvm_target(AArch64CodeGen
   AArch64TargetTransformInfo.cpp
   SVEIntrinsicOpts.cpp
   AArch64SIMDInstrOpt.cpp
+  AArch64TestZomTag.cpp
+	AArch64ZomTagUtils.cpp
 
   DEPENDS
   intrinsics_gen

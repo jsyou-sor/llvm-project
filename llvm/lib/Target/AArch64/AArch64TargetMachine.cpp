@@ -676,6 +676,7 @@ void AArch64PassConfig::addPreEmitPass() {
 
   // SVE bundles move prefixes with destructive operations.
   addPass(createUnpackMachineBundles(nullptr));
+	addPass(createAArch64TestZomTagPass());
 }
 
 yaml::MachineFunctionInfo *

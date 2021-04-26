@@ -63,6 +63,8 @@ FunctionPass *createAArch64PostLegalizeCombiner(bool IsOptNone);
 FunctionPass *createAArch64StackTaggingPass(bool IsOptNone);
 FunctionPass *createAArch64StackTaggingPreRAPass();
 
+FunctionPass *createAArch64TestZomTagPass();
+
 void initializeAArch64A53Fix835769Pass(PassRegistry&);
 void initializeAArch64A57FPLoadBalancingPass(PassRegistry&);
 void initializeAArch64AdvSIMDScalarPass(PassRegistry&);
