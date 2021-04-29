@@ -37,6 +37,12 @@
 #endif
 
 
+// TestSanitizer
+// SANITIZER("testsan", Test)
+
+// ZomTag
+SANITIZER("zomtag", ZomTag)
+
 // AddressSanitizer
 SANITIZER("address", Address)
 

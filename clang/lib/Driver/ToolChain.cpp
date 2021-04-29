@@ -1007,6 +1007,9 @@ SanitizerMask ToolChain::getSupportedSanitizers() const {
     Res |= SanitizerKind::ShadowCallStack;
   if (getTriple().isAArch64())
     Res |= SanitizerKind::MemTag;
+	if (getTriple().getArch() == llvm::Triple::x86_64 ||
+			getTriple().isAArch64())
+		Res |= SanitizerKind::ZomTag;
   return Res;
 }
 

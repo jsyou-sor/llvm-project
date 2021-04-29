@@ -60,7 +60,9 @@ class SanitizerArgs {
   /// Parses the sanitizer arguments from an argument list.
   SanitizerArgs(const ToolChain &TC, const llvm::opt::ArgList &Args);
 
-  bool needsSharedRt() const { return SharedRuntime; }
+  //bool needsTestSanRt() const { return Sanitizers.has(SanitizerKind::Test); }
+	bool needsZomTagRt() const { return Sanitizers.has(SanitizerKind::ZomTag); }
+	bool needsSharedRt() const { return SharedRuntime; }
 
   bool needsAsanRt() const { return Sanitizers.has(SanitizerKind::Address); }
   bool needsHwasanRt() const {

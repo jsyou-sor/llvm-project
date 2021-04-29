@@ -857,6 +857,7 @@ SanitizerMask Linux::getSupportedSanitizers() const {
   Res |= SanitizerKind::Memory;
   Res |= SanitizerKind::Vptr;
   Res |= SanitizerKind::SafeStack;
+	//Res |= SanitizerKind::Test;
   if (IsX86_64 || IsMIPS64 || IsAArch64)
     Res |= SanitizerKind::DataFlow;
   if (IsX86_64 || IsMIPS64 || IsAArch64 || IsX86 || IsArmArch || IsPowerPC64 ||
@@ -874,7 +875,8 @@ SanitizerMask Linux::getSupportedSanitizers() const {
   if (IsX86_64 || IsAArch64) {
     Res |= SanitizerKind::HWAddress;
     Res |= SanitizerKind::KernelHWAddress;
-  }
+  	Res |= SanitizerKind::ZomTag;
+	}
   return Res;
 }
 

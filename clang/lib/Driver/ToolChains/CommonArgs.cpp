@@ -670,6 +670,12 @@ collectSanitizerRuntimes(const ToolChain &TC, const ArgList &Args,
   const SanitizerArgs &SanArgs = TC.getSanitizerArgs();
   // Collect shared runtimes.
   if (SanArgs.needsSharedRt()) {
+/*		
+		if (SanArgs.needsTestSanRt()) {
+			std::cout << "Shared RT" << std::endl;
+			SharedRuntimes.push_back("testsan");
+		}
+*/
     if (SanArgs.needsAsanRt() && SanArgs.linkRuntimes()) {
       SharedRuntimes.push_back("asan");
       if (!Args.hasArg(options::OPT_shared) && !TC.getTriple().isAndroid())
@@ -700,6 +706,15 @@ collectSanitizerRuntimes(const ToolChain &TC, const ArgList &Args,
     // Don't link static runtimes into DSOs.
     return;
   }
+
+/*
+	if (SanArgs.needsTestSanRt()) {
+		StaticRuntimes.push_back("testsan");
+	}
+*/
+
+	if (SanArgs.needsZomTagRT())
+		StaticRuntimes.push_back("zomtag");
 
   // Each static runtime that has a DSO counterpart above is excluded below,
   // but runtimes that exist only as static are not affected by needsSharedRt.

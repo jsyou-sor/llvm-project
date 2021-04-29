@@ -71,6 +71,7 @@
 #include "llvm/Transforms/Instrumentation/MemorySanitizer.h"
 #include "llvm/Transforms/Instrumentation/SanitizerCoverage.h"
 #include "llvm/Transforms/Instrumentation/ThreadSanitizer.h"
+#include "llvm/Transforms/Instrumentation/TestSanitizer.h"
 #include "llvm/Transforms/ObjCARC.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
@@ -208,6 +209,20 @@ static void addAddDiscriminatorsPass(const PassManagerBuilder &Builder,
 static void addBoundsCheckingPass(const PassManagerBuilder &Builder,
                                   legacy::PassManagerBase &PM) {
   PM.add(createBoundsCheckingLegacyPass());
+}
+
+/*
+static void addTestSanitizerPasses(const PassManagerBuilder &Builder,
+																	 legacy::PassManagerBase &PM) {
+	PM.add(llvm::createSimpleModulePass());
+	PM.add(llvm::createSimpleFuncPass());
+	PM.add(llvm::createSimpleBlockPass());
+}
+*/
+
+static void addZomTagPass(const PassManagerBuilder &Builder,
+													legacy::PassManagerBase &PM) {
+	PM.add(createZomTagPass());
 }
 
 static SanitizerCoverageOptions
@@ -727,6 +742,22 @@ void EmitAssemblyHelper::CreatePasses(legacy::PassManager &MPM,
     PMBuilder.addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0,
                            addDataFlowSanitizerPass);
   }
+
+/*
+	if (LangOpts.Sanitize.has(SanitizerKind::Test)) {
+		PMBuilder.addExtension(PassManagerBuilder::EP_OptimizerLast,
+													 addTestSanitizerPasses);
+		PMBuilder.addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0,
+													 addTestSanitizerPasses);
+	}
+*/
+
+	if (LangOpts.Sanitizer.has(SanitizerKind::ZomTag)) {
+		PMBuilder.addExtension(PassManagerBuilder::EP_OptimizerLast,
+													 addZomTagPass);
+		PMBuilder.addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0,
+													 addZomTagPass);
+	}
 
   // Set up the per-function pass manager.
   FPM.add(new TargetLibraryInfoWrapperPass(*TLII));
