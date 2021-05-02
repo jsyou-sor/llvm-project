@@ -713,7 +713,7 @@ collectSanitizerRuntimes(const ToolChain &TC, const ArgList &Args,
 	}
 */
 
-	if (SanArgs.needsZomTagRT())
+	if (SanArgs.needsZomTagRt())
 		StaticRuntimes.push_back("zomtag");
 
   // Each static runtime that has a DSO counterpart above is excluded below,

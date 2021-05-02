@@ -752,7 +752,7 @@ void EmitAssemblyHelper::CreatePasses(legacy::PassManager &MPM,
 	}
 */
 
-	if (LangOpts.Sanitizer.has(SanitizerKind::ZomTag)) {
+	if (LangOpts.Sanitize.has(SanitizerKind::ZomTag)) {
 		PMBuilder.addExtension(PassManagerBuilder::EP_OptimizerLast,
 													 addZomTagPass);
 		PMBuilder.addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0,
