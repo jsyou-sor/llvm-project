@@ -7,6 +7,7 @@
 #include "llvm/Pass.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Instrumentation.h"
+#include "llvm/InitializePasses.h"
 #include "../../Target/AArch64/AArch64Zt.h"
 
 using namespace llvm;
@@ -14,37 +15,40 @@ using namespace llvm;
 
 namespace
 {
-	struct ZomtagMetaData : public FunctionPass
-	{
-		static char ID;
-		ZomtagMetaData() : FunctionPass(ID)
-		{
-			initializeZomtagMetaDataPass(*PassRegistry::getPassRegistry());
-		}
+  struct ZomtagMetaData : public FunctionPass
+  {
+    static char ID;
+    ZomtagMetaData() : FunctionPass(ID)
+    {
+      initializeZomtagMetaDataPass(*PassRegistry::getPassRegistry());
+    }
 
-		bool runOnFunction(Function &F) override
-		{
-			for(auto &BB : F)
-			{
-				for(auto &I : BB)
-				{
-					if (GetElementPtrInst *GEP = dyn_cast<GetElementPtrInst>(&I))
-					{
-						auto &C = F.getContext();
-						MDNode *N = MDNode::get(C, MDString::get(C, "Metadata"));
-						I.setMetadata(ZTMetaDataKind, N);
-					}
-				}
-			}
-			return false;
-		}
-	};
+    bool runOnFunction(Function &F) override
+    {
+      for (auto &BB : F)
+      {
+        for (auto &I : BB)
+        {
+          if(GetElementPtrInst *GEP = dyn_cast<GetElementPtrInst>(&I))
+          {
+            errs() << "\t[GEP]\t";
+            I.dump();
+            auto &C = F.getContext();
+            MDNode *N = MDNode::get(C, MDString::get(C, "Metadata"));
+            I.setMetadata(ZTMetaDataKind, N);
+            errs() << "\n";
+          }
+        }
+      }
+      return false;
+    }
+  };
 }
 
-char ZomtagMetaDataPass::ID = 0;
+char ZomtagMetaData::ID = 0;
 INITIALIZE_PASS(ZomtagMetaData, "zomtag-md-pass", "zomtag md pass", false, false)
 
 FunctionPass *llvm::createZomtagMetaDataPass()
 {
-	return new ZomtagMetaData();
+  return new ZomtagMetaData();
 }

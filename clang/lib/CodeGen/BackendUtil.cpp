@@ -225,6 +225,11 @@ static void addZomTagPass(const PassManagerBuilder &Builder,
 	PM.add(createZomTagPass());
 }
 
+static void addZomtagMetaDataPass(const PassManagerBuilder &Builder,
+                                  legacy::PassManagerBase &PM) {
+  PM.add(createZomtagMetaDataPass());
+}
+
 static SanitizerCoverageOptions
 getSancovOptsFromCGOpts(const CodeGenOptions &CGOpts) {
   SanitizerCoverageOptions Opts;
@@ -677,6 +682,9 @@ void EmitAssemblyHelper::CreatePasses(legacy::PassManager &MPM,
     PMBuilder.addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0,
                            addBoundsCheckingPass);
   }
+
+  PMBuilder.addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0,
+                         addZomtagMetaDataPass);
 
   if (CodeGenOpts.SanitizeCoverageType ||
       CodeGenOpts.SanitizeCoverageIndirectCalls ||

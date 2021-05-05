@@ -441,6 +441,8 @@ void initializeWriteBitcodePassPass(PassRegistry&);
 void initializeWriteThinLTOBitcodePass(PassRegistry&);
 void initializeXRayInstrumentationPass(PassRegistry&);
 
+void initializeZomtagMetaDataPass(PassRegistry &);
+
 } // end namespace llvm
 
 #endif // LLVM_INITIALIZEPASSES_H
