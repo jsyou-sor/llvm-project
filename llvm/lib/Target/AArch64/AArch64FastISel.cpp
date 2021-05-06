@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "AArch64.h"
+#include "AArch64Zt.h"
 #include "AArch64CallingConvention.h"
 #include "AArch64RegisterInfo.h"
 #include "AArch64Subtarget.h"
@@ -5050,6 +5051,11 @@ bool AArch64FastISel::selectGetElementPtr(const Instruction *I) {
         continue;
       }
       if (TotalOffs) {
+        
+        auto ZTData = I->getMetadata(ZTMetaDataKind);
+        errs() << "[AArch64FastISel::selectGetElementPtr]\tcalling emitAdd_ri_ (1)" <<
+          (ZTData != nullptr ? " with ZTData" : " without ZTData") << "\n";
+        
         N = emitAdd_ri_(VT, N, NIsKill, TotalOffs);
         if (!N)
           return false;
@@ -5066,20 +5072,35 @@ bool AArch64FastISel::selectGetElementPtr(const Instruction *I) {
         return false;
 
       if (ElementSize != 1) {
+        
+        auto ZTData = I->getMetadata(ZTMetaDataKind);
+        errs() << "[AArch64FastISel::selectGetElementPtr]\tcalling fastEmit_i" <<
+          (ZTData != nullptr ? " with ZTData" : " without ZTData") << "\n";
+        
         unsigned C = fastEmit_i(VT, VT, ISD::Constant, ElementSize);
         if (!C)
           return false;
+
+        ZTData = I->getMetadata(ZTMetaDataKind);
+        errs() << "[AArch64FastISel::selectGetElementPtr]\tcalling emitMul_rr" <<
+          (ZTData != nullptr ? " with ZTData" : " without ZTData") << "\n";
         IdxN = emitMul_rr(VT, IdxN, IdxNIsKill, C, true);
         if (!IdxN)
           return false;
         IdxNIsKill = true;
       }
+      auto ZTData = I->getMetadata(ZTMetaDataKind);
+      errs() << "[AArch64FastISel::selectGetElementPtr]\tcalling fastEmit_rr" <<
+        (ZTData != nullptr ? " with ZTData" : " without ZTData") << "\n";
       N = fastEmit_rr(VT, VT, ISD::ADD, N, NIsKill, IdxN, IdxNIsKill);
       if (!N)
         return false;
     }
   }
   if (TotalOffs) {
+    auto ZTData = I->getMetadata(ZTMetaDataKind);
+    errs() << "[AArch64FastISel::selectGetElementPtr]\tcalling emitAdd_ri_ (2)" <<
+      (ZTData != nullptr ? " with ZTData" : " without ZTData") << "\n";
     N = emitAdd_ri_(VT, N, NIsKill, TotalOffs);
     if (!N)
       return false;

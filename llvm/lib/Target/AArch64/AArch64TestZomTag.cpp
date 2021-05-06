@@ -131,7 +131,7 @@ bool TestZomTag::runOnMachineFunction(MachineFunction &MF)
 */    
       if (zomtagUtils->isInterestingStore(*MIi))
       {
-				MIi->print(errs());
+	    MIi->print(errs());
         const auto &DL = MIi->getDebugLoc();
         const auto op = zomtagUtils->getCorrespondingStore(MIi->getOpcode());
         const unsigned dst = MIi->getOperand(0).getReg();
@@ -140,7 +140,7 @@ bool TestZomTag::runOnMachineFunction(MachineFunction &MF)
         const unsigned off_w = zomtagUtils->getCorrespondingReg(off_x);
         //const int64_t ext = MIi->getOperand(3).getImm();
         const int64_t ext = AArch64_AM::SXTW;
-				const int64_t amount = MIi->getOperand(4).getImm();
+		const int64_t amount = MIi->getOperand(4).getImm();
 
         BuildMI(MBB, MIi, DL, TII->get(op), dst).addReg(src).addReg(off_w).addImm(ext).addImm(amount);
       
