@@ -30,12 +30,11 @@ namespace
         {
           if (GetElementPtrInst *GEP = dyn_cast<GetElementPtrInst>(&I))
           {
-            //errs() << "\t[GEP]\t";
             //I.dump();
+						//errs() << "********** adding metadata to GEP\n";
             auto &C = F.getContext();
             MDNode *N = MDNode::get(C, MDString::get(C, "Metadata"));
             I.setMetadata(ZTMetaDataKind, N);
-            //errs() << "\n";
           }
         }
       }

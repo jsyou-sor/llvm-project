@@ -21,7 +21,7 @@ set(ZOMTAG_CFLAGS)
 
 add_compiler_rt_runtime(clang_rt.zomtag
         STATIC
-        ARCHS x86_64
+        ARCHS aarch64
         SOURCES ${ZOMTAG_SOURCES}
         CFLAGS ${ZOMTAG_CFLAGS}
         PARENT_TARGET zomtag)

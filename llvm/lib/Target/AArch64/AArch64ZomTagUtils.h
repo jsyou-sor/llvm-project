@@ -25,6 +25,7 @@ namespace llvm
       return std::make_shared<ZomTagUtils>(TRI, TII);
     }
 
+		bool isAddSub(MachineInstr &MI);
     bool isXReg(const unsigned reg);
     bool isLoad(const MachineInstr &MI);
     unsigned getCorrespondingLoad(const unsigned opCode);

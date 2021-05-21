@@ -92,12 +92,9 @@ bool TestZomTag::runOnMachineFunction(MachineFunction &MF)
   {
     for (auto MIi = MBB.instr_begin(); MIi != MBB.instr_end(); MIi++)
     {
-      //if (MIi->getOperand(MIi->getNumOperands() - 1).isMetadata())
-        //MI.dump();
-
       if (zomtagUtils->isInterestingLoad(*MIi))
       {
-        MIi->dump();
+        //MIi->print(errs());
         const auto &DL = MIi->getDebugLoc();
         const auto op = zomtagUtils->getCorrespondingLoad(MIi->getOpcode());
         const unsigned dst = MIi->getOperand(0).getReg();
@@ -105,76 +102,60 @@ bool TestZomTag::runOnMachineFunction(MachineFunction &MF)
         const unsigned off_x = MIi->getOperand(2).getReg();
         const unsigned off_w = zomtagUtils->getCorrespondingReg(off_x);
         //const int64_t ext = MIi->getOperand(3).getImm();
-        const int64_t ext = AArch64_AM::UXTW;
+        const int64_t ext = AArch64_AM::SXTW;
         const int64_t amount = MIi->getOperand(4).getImm();
 
-        //BuildMI(MBB, MIi, DL, TII->get(op),dst).addReg(src).addReg(off_w).addImm(ext).addImm(amount);
+        BuildMI(MBB, MIi, DL, TII->get(op),dst).addReg(src).addReg(off_w).addImm(ext).addImm(amount);
         
-        //auto tmp = MIi;
-        //MIi--;
-        //tmp->removeFromParent();
-         
-        //MI->dump();
-        //errs() << MI->getOperand(3).getImm() << "\n";
-        //unsigned Opcode = MIi->getOpcode();
-        //if (Opcode == Instruction::SExt || Opcode == Instruction::ZExt)
-          //MIi->dump();
+        auto tmp = MIi;
+        MIi--;
+        tmp->removeFromParent();
       }
 
-/*
-      if (zomtagUtils->isRegisterOffsetLoad(*MIi))
-      {
-        MIi->dump();
-        errs() << "\t" << MIi->getOperand(3).getImm() << "\n";
-      }
-*/    
       if (zomtagUtils->isInterestingStore(*MIi))
       {
-        MIi->dump();
+        //MIi->print(errs());
         const auto &DL = MIi->getDebugLoc();
         const auto op = zomtagUtils->getCorrespondingStore(MIi->getOpcode());
         const unsigned dst = MIi->getOperand(0).getReg();
         const unsigned src = MIi->getOperand(1).getReg();
         const unsigned off_x = MIi->getOperand(2).getReg();
         const unsigned off_w = zomtagUtils->getCorrespondingReg(off_x);
-        const int64_t ext = MIi->getOperand(3).getImm();
-        const int64_t amount = MIi->getOperand(4).getImm();
+        //const int64_t ext = MIi->getOperand(3).getImm();
+        const int64_t ext = AArch64_AM::SXTW;
+				const int64_t amount = MIi->getOperand(4).getImm();
 
-        //BuildMI(MBB, MIi, DL, TII->get(op), dst).addReg(src).addReg(off_w).addImm(ext).addImm(amount);
+        BuildMI(MBB, MIi, DL, TII->get(op), dst).addReg(src).addReg(off_w).addImm(ext).addImm(amount);
       
-        //auto tmp = MIi;
-        //MIi--;
-        //tmp->removeFromParent();
+        auto tmp = MIi;
+        MIi--;
+        tmp->removeFromParent();
       }
+
+			if (zomtagUtils->isAddSub(*MIi))
+			{
+				auto op_src = MIi->getOperand(MIi->getNumOperands() - 1);
+				if (op_src.isMetadata())
+				{
+					const unsigned ptr_reg = MIi->getOperand(1).getReg();
+					const MCInstrDesc &II = TII->get(AArch64::ANDSXri);							// ANDSXri
+					const auto &DL = MIi->getDebugLoc();
+					int64_t imm = 0x100000000;
+				
+					//auto tmp = MIi + 1;	
+	
+					//MIi->print(errs());
+					//MachineInstrBuilder MIB =
+					//BuildMI(MBB, MIi, DL, II, AArch64::XZR)
+						//.addReg(ptr_reg)
+						//.addImm(AArch64_AM::encodeLogicalImmediate(imm, 64));
+					//errs() << "********** TST ";
+					//MIB->print(errs());
+
+				}
+			}
     }
   }
   return true;
 }
 
-/*
-bool TestZomTag::isAddSub(MachineInstr &MI)
-{
-  switch(MI.getOpcode())
-  {
-    default:
-      return false;
-    case AArch64::SUBWri:
-    case AArch64::SUBXri:
-    case AArch64::ADDWri:
-    case AArch64::ADDXri:
-    case AArch64::SUBSWri:
-    case AArch64::SUBSXri:
-    case AArch64::ADDSWri:
-    case AArch64::ADDSXri:
-    case AArch64::SUBWrr:
-    case AArch64::SUBXrr:
-    case AArch64::ADDWrr:
-    case AArch64::ADDXrr:
-    case AArch64::SUBSWrr:
-    case AArch64::SUBSXrr:
-    case AArch64::ADDSWrr:
-    case AArch64::ADDSXrr:
-      return true;
-  }
-}
-*/

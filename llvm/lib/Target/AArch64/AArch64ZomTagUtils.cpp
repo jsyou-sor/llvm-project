@@ -8,6 +8,32 @@ ZomTagUtils::ZomTagUtils(const TargetRegisterInfo *TRI,
 {
 };
 
+bool ZomTagUtils::isAddSub(MachineInstr &MI)
+{
+  switch(MI.getOpcode())
+  {
+    default:
+      return false;
+    case AArch64::SUBWri:
+    case AArch64::SUBXri:
+    case AArch64::ADDWri:
+    case AArch64::ADDXri:
+    case AArch64::SUBSWri:
+    case AArch64::SUBSXri:
+    case AArch64::ADDSWri:
+    case AArch64::ADDSXri:
+    case AArch64::SUBWrr:
+    case AArch64::SUBXrr:
+    case AArch64::ADDWrr:
+    case AArch64::ADDXrr:
+    case AArch64::SUBSWrr:
+    case AArch64::SUBSXrr:
+    case AArch64::ADDSWrr:
+    case AArch64::ADDSXrr:
+      return true;
+  }
+}
+
 unsigned ZomTagUtils::getCorrespondingStore(const unsigned opCode)
 {
   switch(opCode)

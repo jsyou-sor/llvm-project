@@ -374,6 +374,8 @@ void EmitAssemblyHelper::CreatePasses(legacy::PassManager &MPM,
                            addBoundsCheckingPass);
   }
 
+	PMBuilder.addExtension(PassManagerBuilder::EP_OptimizerLast,
+												 addZomtagMetaDataPass);
   PMBuilder.addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0,
                          addZomtagMetaDataPass);
 

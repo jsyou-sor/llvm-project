@@ -23,6 +23,8 @@
 #include <sys/types.h>
 #include <sys/user.h>
 
+#include <stdio.h>
+
 #include "interception/interception.h"
 #include "sanitizer_common/sanitizer_common.h"
 
@@ -97,7 +99,10 @@ using namespace __sanitizer;
 static inline void *unsafe_stack_alloc(size_t size, size_t guard) {
   CHECK_GE(size + guard, size);
   void *addr = MmapOrDie(size + guard, "unsafe_stack_alloc");
-  MprotectNoAccess((uptr)addr, (uptr)guard);
+	MprotectNoAccess((uptr)addr, (uptr)guard);
+
+	printf("[SAFESTACK]\tunsafe stack start: %p\n", addr + guard);
+
   return (char *)addr + guard;
 }
 
@@ -111,6 +116,8 @@ static inline void unsafe_stack_setup(void *start, size_t size, size_t guard) {
   unsafe_stack_start = start;
   unsafe_stack_size = size;
   unsafe_stack_guard = guard;
+
+	printf("[SAFESTACK]\tunsafe stack ptr: %p\n", stack_ptr);
 }
 
 static void unsafe_stack_free() {
@@ -212,7 +219,7 @@ __attribute__((constructor(0)))
 #endif
 void __safestack_init() {
   // Determine the stack size for the main thread.
-  size_t size = kDefaultUnsafeStackSize;
+	size_t size = kDefaultUnsafeStackSize;
   size_t guard = 4096;
 
   struct rlimit limit;
@@ -220,16 +227,26 @@ void __safestack_init() {
     size = limit.rlim_cur;
 
   // Allocate unsafe stack for main thread
-  void *addr = unsafe_stack_alloc(size, guard);
+	//printf("Allocating 4G unsafe stack region\n");
+	//printf("Default stack size: %zu\n", size);
+	size_t region_size = 0x100000000;
+  //void *addr = unsafe_stack_alloc(size, guard);
+	void *addr = unsafe_stack_alloc(region_size, guard);
 
-  unsafe_stack_setup(addr, size, guard);
-  pageSize = sysconf(_SC_PAGESIZE);
+  //unsafe_stack_setup(addr, size, guard);
+  unsafe_stack_setup(addr, region_size, guard);
+	pageSize = sysconf(_SC_PAGESIZE);
 
   // Initialize pthread interceptors for thread allocation
   INTERCEPT_FUNCTION(pthread_create);
 
   // Setup the cleanup handler
   pthread_key_create(&thread_cleanup_key, thread_cleanup_handler);
+
+	//printf("unsafe_stack_start: %p\n", unsafe_stack_start);
+	//printf("unsafe_stack_ptr: %p\n", __safestack_unsafe_stack_ptr);
+	//printf("debug: %p\n", &__safestack_unsafe_stack_ptr);
+	//printf("__safestack_init\n");
 }
 
 #if SANITIZER_CAN_USE_PREINIT_ARRAY

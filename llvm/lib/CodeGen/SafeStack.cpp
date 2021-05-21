@@ -730,7 +730,10 @@ bool SafeStack::runOnFunction(Function &F) {
 
   if (!StaticAllocas.empty() || !DynamicAllocas.empty() ||
       !ByValArguments.empty())
+	{
     ++NumUnsafeStackFunctions; // This function has the unsafe stack.
+		//errs() << "UnsafeStackFunction\n";
+	}
 
   if (!StackRestorePoints.empty())
     ++NumUnsafeStackRestorePointsFunctions;
@@ -756,7 +759,8 @@ bool SafeStack::runOnFunction(Function &F) {
     for (ReturnInst *RI : Returns) {
       IRBuilder<> IRBRet(RI);
       checkStackGuard(IRBRet, F, *RI, StackGuardSlot, StackGuard);
-    }
+		}
+		errs() << "There exists a stack protector\n";
   }
 
   // The top of the unsafe stack after all unsafe static allocas are
