@@ -74,6 +74,9 @@ const unsigned kDefaultUnsafeStackSize = 0x2800000;
 /// Runtime page size obtained through sysconf
 static unsigned pageSize;
 
+// Unsafe stack region number
+int unsafe_stack_region_number = 1;
+
 // TODO: To make accessing the unsafe stack pointer faster, we plan to
 // eventually store it directly in the thread control block data structure on
 // platforms where this structure is pointed to by %fs or %gs. This is exactly
@@ -86,6 +89,13 @@ static unsigned pageSize;
 extern "C" {
 __attribute__((visibility(
     "default"))) __thread void *__safestack_unsafe_stack_ptr = nullptr;
+}
+
+extern "C" SANITIZER_INTERFACE_ATTRIBUTE
+void test_HelloFunction(char *func_name)
+{
+	printf("[SafeStack]\ttest_HelloFunction\n");
+	return;
 }
 
 // Per-thread unsafe stack information. It's not frequently accessed, so there
@@ -118,6 +128,29 @@ static inline void unsafe_stack_setup(void *start, size_t size, size_t guard) {
   unsafe_stack_guard = guard;
 
 	printf("[SAFESTACK]\tunsafe stack ptr: %p\n", stack_ptr);
+}
+
+extern "C" SANITIZER_INTERFACE_ATTRIBUTE
+void unsafe_stack_region_alloc(char *func_name)
+{
+	printf("[SafeStack]\tunsafe_stack_region_alloc\n");
+	unsafe_stack_region_number++;
+	
+	size_t region_size = 0x100000000;
+	size_t guard = 0;
+
+	// unsafe_stack_alloc
+	CHECK_GE(region_size + guard, region_size);
+	void *addr = CustomMmapOrDie(region_size + guard, "unsafe_stack_alloc", false, unsafe_stack_region_number);
+	MprotectNoAccess((uptr)addr, (uptr)guard);
+
+	addr = (char *)addr + guard;
+	printf("[SafeStack]\tNew Unsafe Stack Addr: %p\n", addr);
+
+	// unsafe_stack_setup
+	unsafe_stack_setup(addr, region_size, guard);	
+
+	return;
 }
 
 static void unsafe_stack_free() {
@@ -220,7 +253,8 @@ __attribute__((constructor(0)))
 void __safestack_init() {
   // Determine the stack size for the main thread.
 	size_t size = kDefaultUnsafeStackSize;
-  size_t guard = 4096;
+  //size_t guard = 4096;
+	size_t guard = 0;
 
   struct rlimit limit;
   if (getrlimit(RLIMIT_STACK, &limit) == 0 && limit.rlim_cur != RLIM_INFINITY)

@@ -144,6 +144,23 @@ void *MmapOrDie(uptr size, const char *mem_type, bool raw_report) {
   return (void *)res;
 }
 
+void *CustomMmapOrDie(uptr size, const char *mem_type, bool raw_report, int reg_num) {
+	
+	size = RoundUpTo(size, GetPageSizeCached());
+	
+	int flags = MAP_NORESERVE;
+	flags |= MAP_PRIVATE | MAP_ANON;
+	
+	uptr res = internal_mmap((void *)(0x100000000 * reg_num), size, 
+														PROT_READ | PROT_WRITE, flags, -1, 0);
+	
+	int reserrno;
+	if (internal_iserror(res, &reserrno))
+		ReportMmapFailureAndDie(size, mem_type, "allocate", reserrno, raw_report);
+	IncreaseTotalMmap(size);
+	return (void *)res;
+}
+
 void UnmapOrDie(void *addr, uptr size) {
   if (!addr || !size) return;
   uptr res = internal_munmap(addr, size);

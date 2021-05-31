@@ -52,6 +52,8 @@ using namespace llvm::safestack;
 
 #define DEBUG_TYPE "safestack"
 
+int TotalUnsafeStackAllocas = 0;
+
 namespace llvm {
 
 STATISTIC(NumFunctions, "Total number of functions");
@@ -64,6 +66,8 @@ STATISTIC(NumUnsafeStaticAllocas, "Number of unsafe static allocas");
 STATISTIC(NumUnsafeDynamicAllocas, "Number of unsafe dynamic allocas");
 STATISTIC(NumUnsafeByValArguments, "Number of unsafe byval arguments");
 STATISTIC(NumUnsafeStackRestorePoints, "Number of setjmps and landingpads");
+
+uint64_t total_itr = 0;
 
 } // namespace llvm
 
@@ -132,6 +136,13 @@ class SafeStack : public FunctionPass {
   /// \brief Calculate the allocation size of a given alloca. Returns 0 if the
   /// size can not be statically determined.
   uint64_t getStaticAllocaAllocationSize(const AllocaInst* AI);
+
+	void createNewUnsafeStackRegion(IRBuilder <>&IRB, Function &F,
+																	ArrayRef<AllocaInst *> StaticAllocas,
+																	ArrayRef<Argument *> ByValArguments,
+																	ArrayRef<ReturnInst *> Returns,
+																	Instruction *BasePointer,
+																	AllocaInst *StackGuardSlot);
 
   /// \brief Allocate space for all static allocas in \p StaticAllocas,
   /// replace allocas with pointers into the unsafe stack and generate code to
@@ -366,10 +377,12 @@ void SafeStack::findInsts(Function &F,
 
       if (AI->isStaticAlloca()) {
         ++NumUnsafeStaticAllocas;
+				++TotalUnsafeStackAllocas;
         StaticAllocas.push_back(AI);
       } else {
         ++NumUnsafeDynamicAllocas;
         DynamicAllocas.push_back(AI);
+				errs() << "[SafeStack]\tdynamic alloca\n";
       }
     } else if (auto RI = dyn_cast<ReturnInst>(&I)) {
       Returns.push_back(RI);
@@ -455,6 +468,15 @@ void SafeStack::checkStackGuard(IRBuilder<> &IRB, Function &F, ReturnInst &RI,
   IRBFail.CreateCall(StackChkFail, {});
 }
 
+void SafeStack::createNewUnsafeStackRegion(
+		IRBuilder<> &IRB, Function &F, ArrayRef<AllocaInst *> StaticAllocas,
+		ArrayRef<Argument *> ByValArguments, ArrayRef<ReturnInst *> Returns,
+		Instruction *BasePointer, AllocaInst *StackGuardSlot) {
+
+	return;
+
+}
+
 /// We explicitly compute and set the unsafe stack layout for all unsafe
 /// static alloca instructions. We save the unsafe "base pointer" in the
 /// prologue into a local variable and restore it in the epilogue.
@@ -533,6 +555,8 @@ Value *SafeStack::moveStaticAllocasToUnsafeStack(
     // Replace alloc with the new location.
     StackGuardSlot->replaceAllUsesWith(NewAI);
     StackGuardSlot->eraseFromParent();
+
+		errs() << "[SafeStack]\tStackGuardSlot\n";
   }
 
   for (Argument *Arg : ByValArguments) {
@@ -554,10 +578,53 @@ Value *SafeStack::moveStaticAllocasToUnsafeStack(
     Arg->replaceAllUsesWith(NewArg);
     IRB.SetInsertPoint(cast<Instruction>(NewArg)->getNextNode());
     IRB.CreateMemCpy(Off, Arg, Size, Arg->getParamAlignment());
-  }
+  
+		errs() << "[SafeStack]\tIRB.CreateMemCpy\n";
+
+	}
 
   // Allocate space for every unsafe static AllocaInst on the unsafe stack.
+	uint64_t itr = 0;
+	Instruction *temp;
+
   for (AllocaInst *AI : StaticAllocas) {
+
+		itr++;
+		total_itr++;
+		errs() << "iteration: " << itr << "\n";
+		errs() << "total_iteration: " << total_itr << "\n";
+
+		if ((total_itr % 16 == 1) && (total_itr != 1))
+		{
+			errs() << "[SafeStack_IR]\tInserting instructions to call (unsafe_stack_region_alloc)\n";
+			LLVMContext& context = F.getContext();
+			IRBuilder<> builder(context);
+
+			//builder.SetInsertPoint(&(F.getEntryBlock().front()));
+			builder.SetInsertPoint(AI);
+
+			std::vector<llvm::Type *> name_set_func_args;
+			name_set_func_args.push_back(llvm::Type::getInt8Ty(context)->getPointerTo());
+
+			ArrayRef<Type *> name_set_args_ref(name_set_func_args);
+			FunctionType *name_set_func_type = 
+				FunctionType::get(llvm::Type::getVoidTy(context), name_set_args_ref, false);
+
+			Constant *name_set_func = F.getParent()->getOrInsertFunction("unsafe_stack_region_alloc", name_set_func_type);
+			Value *name_val = builder.CreateGlobalStringPtr(F.getName());
+			Value *args[] = { name_val };
+			builder.CreateCall(name_set_func, args);
+
+			//IRBuilder<> alloc(&F.front(), F.begin()->getFirstInsertionPt());
+			IRBuilder<> alloc(context);
+			alloc.SetInsertPoint(AI);	
+			UnsafeStackPtr = TL->getSafeStackPointerLocation(alloc);
+
+			temp = BasePointer;
+			BasePointer = alloc.CreateLoad(UnsafeStackPtr, false, "unsafe_stack_ptr");
+			assert(BasePointer->getType() == StackPtrTy);	
+		}
+
     IRB.SetInsertPoint(AI);
     unsigned Offset = SSL.getObjectOffset(AI);
 
@@ -612,7 +679,17 @@ Value *SafeStack::moveStaticAllocasToUnsafeStack(
   Value *StaticTop =
       IRB.CreateGEP(BasePointer, ConstantInt::get(Int32Ty, -FrameSize),
                     "unsafe_stack_static_top");
+	
+	//errs() << "[SafeStack]\tIRB.CreateGEP\n";
+
   IRB.CreateStore(StaticTop, UnsafeStackPtr);
+	//errs() << "[SafeStack]\tIRB.CreateStore\n";
+	//auto str = IRB.CreateStore(StaticTop, UnsafeStackPtr);
+	//str->print(errs());
+	//errs() << "\n";
+
+	BasePointer = temp;
+
   return StaticTop;
 }
 
@@ -723,6 +800,7 @@ bool SafeStack::runOnFunction(Function &F) {
   // unsafe stack, all return instructions and stack restore points.
   findInsts(F, StaticAllocas, DynamicAllocas, ByValArguments, Returns,
             StackRestorePoints);
+	errs() << "[SafeStack]\tNumUnsafeStaticAllocas: " << NumUnsafeStaticAllocas << "\n";
 
   if (StaticAllocas.empty() && DynamicAllocas.empty() &&
       ByValArguments.empty() && StackRestorePoints.empty())
@@ -740,6 +818,8 @@ bool SafeStack::runOnFunction(Function &F) {
 
   IRBuilder<> IRB(&F.front(), F.begin()->getFirstInsertionPt());
   UnsafeStackPtr = TL->getSafeStackPointerLocation(IRB);
+	//UnsafeStackPtr->print(errs());
+	//errs() << "\n[SAFESTACK_IR]\tdebug\n";
 
   // Load the current stack pointer (we'll also use it as a base pointer).
   // FIXME: use a dedicated register for it ?
@@ -768,7 +848,7 @@ bool SafeStack::runOnFunction(Function &F) {
   Value *StaticTop =
       moveStaticAllocasToUnsafeStack(IRB, F, StaticAllocas, ByValArguments,
                                      Returns, BasePointer, StackGuardSlot);
-
+	// StaticTop->print(errs());
   // Safe stack object that stores the current unsafe stack top. It is updated
   // as unsafe dynamic (non-constant-sized) allocas are allocated and freed.
   // This is only needed if we need to restore stack pointer after longjmp
@@ -789,7 +869,9 @@ bool SafeStack::runOnFunction(Function &F) {
   }
 
   DEBUG(dbgs() << "[SafeStack]     safestack applied\n");
-  return true;
+  //errs() << "[SafeStack]\t" << TotalUnsafeStackAllocas << "\n";
+
+	return true;
 }
 
 } // anonymous namespace
@@ -801,5 +883,6 @@ INITIALIZE_TM_PASS_END(SafeStack, "safe-stack",
                        "Safe Stack instrumentation pass", false, false)
 
 FunctionPass *llvm::createSafeStackPass(const llvm::TargetMachine *TM) {
-  return new SafeStack(TM);
+  //errs() << "createSafeStackPass\n";
+	return new SafeStack(TM);
 }
