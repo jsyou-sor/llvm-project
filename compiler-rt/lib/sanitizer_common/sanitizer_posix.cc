@@ -144,16 +144,45 @@ void *MmapOrDie(uptr size, const char *mem_type, bool raw_report) {
   return (void *)res;
 }
 
-void *CustomMmapOrDie(uptr size, const char *mem_type, bool raw_report, int reg_num) {
-	
+void *CustomMmapOrDie(uptr size, const char *mem_type, bool raw_report, int reg_num, int va_bits) {
+
+	uptr res;	
 	size = RoundUpTo(size, GetPageSizeCached());
 	
 	int flags = MAP_NORESERVE;
 	flags |= MAP_PRIVATE | MAP_ANON;
+
+	if (va_bits == 39)
+		res = internal_mmap((void *)(0x100000000 * (61 - reg_num)), size, 
+												PROT_READ | PROT_WRITE, flags, -1, 0);
+	else // 48
+		res = internal_mmap((void *)(0x100000000 * (32765 - 3)), size,
+												PROT_READ | PROT_WRITE, flags, -1, 0);
 	
-	uptr res = internal_mmap((void *)(0x100000000 * reg_num), size, 
-														PROT_READ | PROT_WRITE, flags, -1, 0);
-	
+	int reserrno;
+	if (internal_iserror(res, &reserrno))
+		ReportMmapFailureAndDie(size, mem_type, "allocate", reserrno, raw_report);
+	IncreaseTotalMmap(size);
+	return (void *)res;
+}
+
+void *InitialMmapOrDie(uptr size, const char *mem_type, bool raw_report, int va_bits) {
+
+	uptr res;
+	size = RoundUpTo(size, GetPageSizeCached());
+	int flags = MAP_NORESERVE;
+	flags |= MAP_PRIVATE | MAP_ANON;
+
+	if (va_bits == 39)
+	{
+		res = internal_mmap((void *)(0x100000000 * (64 - 3)), size,
+												PROT_READ | PROT_WRITE, flags, -1, 0);
+	}
+	else // 48
+	{
+		res = internal_mmap((void *)(0x100000000 * (32768 - 3)), size,
+												PROT_READ | PROT_WRITE, flags, -1 , 0);
+	}
 	int reserrno;
 	if (internal_iserror(res, &reserrno))
 		ReportMmapFailureAndDie(size, mem_type, "allocate", reserrno, raw_report);

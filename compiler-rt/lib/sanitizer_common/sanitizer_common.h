@@ -81,7 +81,8 @@ void GetThreadStackAndTls(bool main, uptr *stk_addr, uptr *stk_size,
 
 // Memory management
 void *MmapOrDie(uptr size, const char *mem_type, bool raw_report = false);
-void *CustomMmapOrDie(uptr size, const char *mem_type, bool raw_report, int reg_num);
+void *CustomMmapOrDie(uptr size, const char *mem_type, bool raw_report, int reg_num, int va_bits);
+void *InitialMmapOrDie(uptr size, const char *mem_type, bool raw_report, int va_bits);
 INLINE void *MmapOrDieQuietly(uptr size, const char *mem_type) {
   return MmapOrDie(size, mem_type, /*raw_report*/ true);
 }

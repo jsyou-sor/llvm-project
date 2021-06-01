@@ -76,6 +76,7 @@ static unsigned pageSize;
 
 // Unsafe stack region number
 int unsafe_stack_region_number = 1;
+int VA_BITS = 39;
 
 // TODO: To make accessing the unsafe stack pointer faster, we plan to
 // eventually store it directly in the thread control block data structure on
@@ -108,7 +109,8 @@ using namespace __sanitizer;
 
 static inline void *unsafe_stack_alloc(size_t size, size_t guard) {
   CHECK_GE(size + guard, size);
-  void *addr = MmapOrDie(size + guard, "unsafe_stack_alloc");
+  //void *addr = MmapOrDie(size + guard, "unsafe_stack_alloc");
+	void *addr = InitialMmapOrDie(size + guard, "unsafe_stack_alloc", false, VA_BITS);
 	MprotectNoAccess((uptr)addr, (uptr)guard);
 
 	printf("[SAFESTACK]\tunsafe stack start: %p\n", addr + guard);
@@ -141,7 +143,7 @@ void unsafe_stack_region_alloc(char *func_name)
 
 	// unsafe_stack_alloc
 	CHECK_GE(region_size + guard, region_size);
-	void *addr = CustomMmapOrDie(region_size + guard, "unsafe_stack_alloc", false, unsafe_stack_region_number);
+	void *addr = CustomMmapOrDie(region_size + guard, "unsafe_stack_alloc", false, unsafe_stack_region_number, VA_BITS);
 	MprotectNoAccess((uptr)addr, (uptr)guard);
 
 	addr = (char *)addr + guard;
@@ -259,6 +261,10 @@ void __safestack_init() {
   struct rlimit limit;
   if (getrlimit(RLIMIT_STACK, &limit) == 0 && limit.rlim_cur != RLIM_INFINITY)
     size = limit.rlim_cur;
+
+	printf("[SafeStack]\tEnter number of VA bits : ");
+	scanf("%d", &VA_BITS);
+	printf("[SafeStack]\tVA_BITS: %d\n", VA_BITS);
 
   // Allocate unsafe stack for main thread
 	//printf("Allocating 4G unsafe stack region\n");
