@@ -156,7 +156,7 @@ void *CustomMmapOrDie(uptr size, const char *mem_type, bool raw_report, int reg_
 		res = internal_mmap((void *)(0x100000000 * (61 - reg_num)), size, 
 												PROT_READ | PROT_WRITE, flags, -1, 0);
 	else // 48
-		res = internal_mmap((void *)(0x100000000 * (32765 - 3)), size,
+		res = internal_mmap((void *)(0x100000000 * (32765 - reg_num)), size,
 												PROT_READ | PROT_WRITE, flags, -1, 0);
 	
 	int reserrno;
