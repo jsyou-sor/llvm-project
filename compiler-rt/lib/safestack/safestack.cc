@@ -24,6 +24,7 @@
 #include <sys/user.h>
 
 #include <stdio.h>
+#include <string.h>
 
 #include "interception/interception.h"
 #include "sanitizer_common/sanitizer_common.h"
@@ -76,7 +77,11 @@ static unsigned pageSize;
 
 // Unsafe stack region number
 int unsafe_stack_region_number = 1;
-int VA_BITS = 39;
+int VA_BITS = 48;
+
+// function name tracking
+int func_cnt = 0;
+char func[100000][100];
 
 // TODO: To make accessing the unsafe stack pointer faster, we plan to
 // eventually store it directly in the thread control block data structure on
@@ -113,7 +118,7 @@ static inline void *unsafe_stack_alloc(size_t size, size_t guard) {
 	void *addr = InitialMmapOrDie(size + guard, "unsafe_stack_alloc", false, VA_BITS);
 	MprotectNoAccess((uptr)addr, (uptr)guard);
 
-	printf("[SAFESTACK]\tunsafe stack start: %p\n", addr + guard);
+	//printf("[SAFESTACK]\tunsafe stack start: %p\n", addr + guard);
 
   return (char *)addr + guard;
 }
@@ -129,30 +134,56 @@ static inline void unsafe_stack_setup(void *start, size_t size, size_t guard) {
   unsafe_stack_size = size;
   unsafe_stack_guard = guard;
 
-	printf("[SAFESTACK]\tunsafe stack ptr: %p\n", stack_ptr);
+	//printf("[SAFESTACK]\tunsafe stack ptr: %p\n", stack_ptr);
 }
 
 extern "C" SANITIZER_INTERFACE_ATTRIBUTE
 void unsafe_stack_region_alloc(char *func_name)
 {
-	printf("[SafeStack]\tunsafe_stack_region_alloc\n");
-	unsafe_stack_region_number++;
-	
+	//printf("[SafeStack]\tunsafe_stack_region_alloc\n");
+	//unsafe_stack_region_number++;
+
+	int exist = 0;
+
+	for (int i = 0; i < func_cnt; i++)
+	{
+		if (!strcmp(func[i], func_name))
+			exist = 1;
+		//printf("func[i]:\t%s\n", func[i]);
+		//printf("func_name:\t%s\n", func_name);
+	}
+
+	if (!exist)
+	{
+		//func[func_cnt] = func_name;
+		strcpy(func[func_cnt], func_name);
+		func_cnt++;
+	}
+
 	size_t region_size = 0x100000000;
 	size_t guard = 0;
 
 	// unsafe_stack_alloc
-	CHECK_GE(region_size + guard, region_size);
-	void *addr = CustomMmapOrDie(region_size + guard, "unsafe_stack_alloc", false, unsafe_stack_region_number, VA_BITS);
-	MprotectNoAccess((uptr)addr, (uptr)guard);
+	if (!exist)
+	{
+		unsafe_stack_region_number++;
 
-	addr = (char *)addr + guard;
-	printf("[SafeStack]\tNew Unsafe Stack Addr: %p\n", addr);
+		CHECK_GE(region_size + guard, region_size);
+		void *addr = CustomMmapOrDie(region_size + guard, "unsafe_stack_alloc", false, unsafe_stack_region_number, VA_BITS);
+		MprotectNoAccess((uptr)addr, (uptr)guard);
 
-	// unsafe_stack_setup
-	unsafe_stack_setup(addr, region_size, guard);	
+		addr = (char *)addr + guard;
+		//printf("[SafeStack]\tNew Unsafe Stack Addr: %p\n", addr);
 
-	return;
+		// unsafe_stack_setup
+		unsafe_stack_setup(addr, region_size, guard);	
+		return;
+	}
+	else // exist == 1
+	{
+		//printf("function exists!\n");
+		return;
+	}
 }
 
 static void unsafe_stack_free() {
@@ -219,6 +250,8 @@ INTERCEPTOR(int, pthread_create, pthread_t *thread,
   size_t size = 0;
   size_t guard = 0;
 
+  printf("[SafeStack]\tpthread INTERCEPTOR\n");
+
   if (attr) {
     pthread_attr_getstacksize(attr, &size);
     pthread_attr_getguardsize(attr, &guard);
@@ -262,8 +295,8 @@ void __safestack_init() {
   if (getrlimit(RLIMIT_STACK, &limit) == 0 && limit.rlim_cur != RLIM_INFINITY)
     size = limit.rlim_cur;
 
-	printf("[SafeStack]\tEnter number of VA bits : ");
-	scanf("%d", &VA_BITS);
+	//printf("[SafeStack]\tEnter number of VA bits : ");
+	//scanf("%d", &VA_BITS);
 	printf("[SafeStack]\tVA_BITS: %d\n", VA_BITS);
 
   // Allocate unsafe stack for main thread

@@ -153,10 +153,10 @@ void *CustomMmapOrDie(uptr size, const char *mem_type, bool raw_report, int reg_
 	flags |= MAP_PRIVATE | MAP_ANON;
 
 	if (va_bits == 39)
-		res = internal_mmap((void *)(0x100000000 * (61 - reg_num)), size, 
+		res = internal_mmap((void *)(0x100000000 * (61 - reg_num + 1)), size, 
 												PROT_READ | PROT_WRITE, flags, -1, 0);
 	else // 48
-		res = internal_mmap((void *)(0x100000000 * (32765 - reg_num)), size,
+		res = internal_mmap((void *)(0x100000000 * (32765 - reg_num + 1)), size,
 												PROT_READ | PROT_WRITE, flags, -1, 0);
 	
 	int reserrno;

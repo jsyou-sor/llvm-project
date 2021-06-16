@@ -180,6 +180,10 @@ unsigned ZomTagUtils::getCorrespondingReg(const unsigned XReg)
       return AArch64::W27;
     case AArch64::X28:
       return AArch64::W28;
+		case AArch64::FP:
+			return AArch64::W29;
+		case AArch64::LR:
+			return AArch64::W30;
   }
 }
 

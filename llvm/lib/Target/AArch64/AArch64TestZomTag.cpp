@@ -79,7 +79,7 @@ bool TestZomTag::doInitialization(Module &M)
 bool TestZomTag::runOnMachineFunction(MachineFunction &MF)
 {
   //DEBUG(dbgs() << getPassName() << '\n');
-  errs() << "function " << MF.getName() << '\n';
+  //errs() << "function " << MF.getName() << '\n';
 
   TM = &MF.getTarget();
   STI = &MF.getSubtarget<AArch64Subtarget>();
@@ -125,11 +125,11 @@ bool TestZomTag::runOnMachineFunction(MachineFunction &MF)
         const int64_t ext = AArch64_AM::SXTW;
 				const int64_t amount = MIi->getOperand(4).getImm();
 
-        BuildMI(MBB, MIi, DL, TII->get(op), dst).addReg(src).addReg(off_w).addImm(ext).addImm(amount);
+        //BuildMI(MBB, MIi, DL, TII->get(op), dst).addReg(src).addReg(off_w).addImm(ext).addImm(amount);
       
-        auto tmp = MIi;
-        MIi--;
-        tmp->removeFromParent();
+        //auto tmp = MIi;
+        //MIi--;
+        //tmp->removeFromParent();
       }
 
 			if (zomtagUtils->isAddSub(*MIi))
