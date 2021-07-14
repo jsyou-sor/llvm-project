@@ -73,7 +73,8 @@ namespace {
       (void) llvm::createBoundsCheckingPass();
       
       (void) llvm::createZomtagMetaDataPass();
-      
+			(void) llvm::createZomtagGlobalVariablePass();     
+ 
       (void) llvm::createBreakCriticalEdgesPass();
       (void) llvm::createCallGraphDOTPrinterPass();
       (void) llvm::createCallGraphViewerPass();

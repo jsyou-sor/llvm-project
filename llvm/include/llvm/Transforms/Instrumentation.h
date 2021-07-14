@@ -174,8 +174,8 @@ inline ModulePass *createDataFlowSanitizerPassForJIT(
 // BoundsChecking - This pass instruments the code to perform run-time bounds
 // checking on loads, stores, and other memory intrinsics.
 FunctionPass *createBoundsCheckingPass();
-
 FunctionPass *createZomtagMetaDataPass();
+ModulePass *createZomtagGlobalVariablePass();
 
 /// \brief Calculate what to divide by to scale counts.
 ///

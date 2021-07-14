@@ -116,6 +116,134 @@ bool ZomTagUtils::isRegisterOffsetLoad(const MachineInstr &MI)
   }
 }
 
+bool ZomTagUtils::isPrePostIndexed(const MachineInstr &MI)
+{
+	const auto opCode = MI.getOpcode();
+	switch(opCode)
+	{
+		default:
+			return false;
+		case AArch64::LDRSBWpre:
+  	case AArch64::LDRSHWpre:
+  	case AArch64::STRBBpre:
+  	case AArch64::LDRBBpre:
+  	case AArch64::STRHHpre:
+  	case AArch64::LDRHHpre:
+  	case AArch64::STRWpre:
+  	case AArch64::LDRWpre:
+  	case AArch64::LDRSBWpost:
+  	case AArch64::LDRSHWpost:
+  	case AArch64::STRBBpost:
+  	case AArch64::LDRBBpost:
+  	case AArch64::STRHHpost:
+  	case AArch64::LDRHHpost:
+  	case AArch64::STRWpost:
+  	case AArch64::LDRWpost:
+  	case AArch64::LDRSBXpre:
+  	case AArch64::LDRSHXpre:
+	  case AArch64::STRXpre:
+  	case AArch64::LDRSWpre:
+  	case AArch64::LDRXpre:
+  	case AArch64::LDRSBXpost:
+  	case AArch64::LDRSHXpost:
+  	case AArch64::STRXpost:
+  	case AArch64::LDRSWpost:
+  	case AArch64::LDRXpost:
+  	case AArch64::LDRQpre:
+  	case AArch64::STRQpre:
+  	case AArch64::LDRQpost:
+  	case AArch64::STRQpost:
+  	case AArch64::LDRDpre:
+  	case AArch64::STRDpre:
+  	case AArch64::LDRDpost:
+  	case AArch64::STRDpost:
+  	case AArch64::LDRSpre:
+  	case AArch64::STRSpre:
+  	case AArch64::LDRSpost:
+  	case AArch64::STRSpost:
+  	case AArch64::LDRHpre:
+  	case AArch64::STRHpre:
+  	case AArch64::LDRHpost:
+  	case AArch64::STRHpost:
+  	case AArch64::LDRBpre:
+  	case AArch64::STRBpre:
+  	case AArch64::LDRBpost:
+  	case AArch64::STRBpost:
+			return true;
+	}
+}
+
+unsigned ZomTagUtils::getQReg(const unsigned XReg)
+{
+	switch(XReg)
+	{
+		default:
+			return XReg;
+		case AArch64::X0:
+      return AArch64::Q0;
+    case AArch64::X1:
+      return AArch64::Q1;
+    case AArch64::X2:
+      return AArch64::Q2;
+    case AArch64::X3:
+      return AArch64::Q3;
+    case AArch64::X4:
+      return AArch64::Q4;
+    case AArch64::X5:
+      return AArch64::Q5;
+    case AArch64::X6:
+      return AArch64::Q6;
+    case AArch64::X7:
+      return AArch64::Q7;
+    case AArch64::X8:
+      return AArch64::Q8;
+    case AArch64::X9:
+      return AArch64::Q9;
+    case AArch64::X10:
+      return AArch64::Q10;
+    case AArch64::X11:
+      return AArch64::Q11;
+    case AArch64::X12:
+      return AArch64::Q12;
+    case AArch64::X13:
+      return AArch64::Q13;
+    case AArch64::X14:
+      return AArch64::Q14;
+    case AArch64::X15:
+      return AArch64::Q15;
+    case AArch64::X16:
+      return AArch64::Q16;
+    case AArch64::X17:
+      return AArch64::Q17;
+    case AArch64::X18:
+      return AArch64::Q18;
+    case AArch64::X19:
+      return AArch64::Q19;
+    case AArch64::X20:
+      return AArch64::Q20;
+    case AArch64::X21:
+      return AArch64::Q21;
+    case AArch64::X22:
+      return AArch64::Q22;
+    case AArch64::X23:
+      return AArch64::Q23;
+    case AArch64::X24:
+      return AArch64::Q24;
+    case AArch64::X25:
+      return AArch64::Q25;
+    case AArch64::X26:
+      return AArch64::Q26;
+    case AArch64::X27:
+      return AArch64::Q27;
+    case AArch64::X28:
+      return AArch64::Q28;
+		case AArch64::FP:
+			return AArch64::Q29;
+		case AArch64::LR:
+			return AArch64::Q30;
+	}
+}
+
 unsigned ZomTagUtils::getCorrespondingReg(const unsigned XReg)
 {
   switch(XReg)
@@ -259,6 +387,214 @@ bool ZomTagUtils::isXReg(const unsigned reg)
   }
 }
 
+bool ZomTagUtils::isQReg(const unsigned reg)
+{
+  switch(reg)
+  {
+    default:
+      return false;
+    case AArch64::Q0:
+    case AArch64::Q1:
+    case AArch64::Q2:
+    case AArch64::Q3:
+    case AArch64::Q4:
+    case AArch64::Q5:
+    case AArch64::Q6:
+    case AArch64::Q7:
+    case AArch64::Q8:
+    case AArch64::Q9:
+    case AArch64::Q10:
+    case AArch64::Q11:
+    case AArch64::Q12:
+    case AArch64::Q13:
+    case AArch64::Q14:
+    case AArch64::Q15:
+    case AArch64::Q16:
+    case AArch64::Q17:
+    case AArch64::Q18:
+    case AArch64::Q19:
+    case AArch64::Q20:
+    case AArch64::Q21:
+    case AArch64::Q22:
+    case AArch64::Q23:
+    case AArch64::Q24:
+    case AArch64::Q25:
+    case AArch64::Q26:
+    case AArch64::Q27:
+    case AArch64::Q28:
+    case AArch64::Q29:   // X29
+    case AArch64::Q30:   // X30
+		case AArch64::D0:
+    case AArch64::D1:
+    case AArch64::D2:
+    case AArch64::D3:
+    case AArch64::D4:
+    case AArch64::D5:
+    case AArch64::D6:
+    case AArch64::D7:
+    case AArch64::D8:
+    case AArch64::D9:
+    case AArch64::D10:
+    case AArch64::D11:
+    case AArch64::D12:
+    case AArch64::D13:
+    case AArch64::D14:
+    case AArch64::D15:
+    case AArch64::D16:
+    case AArch64::D17:
+    case AArch64::D18:
+    case AArch64::D19:
+    case AArch64::D20:
+    case AArch64::D21:
+    case AArch64::D22:
+    case AArch64::D23:
+    case AArch64::D24:
+    case AArch64::D25:
+    case AArch64::D26:
+    case AArch64::D27:
+    case AArch64::D28:
+    case AArch64::D29:   // X29
+    case AArch64::D30:   // X30
+		case AArch64::S0:
+    case AArch64::S1:
+    case AArch64::S2:
+    case AArch64::S3:
+    case AArch64::S4:
+    case AArch64::S5:
+    case AArch64::S6:
+    case AArch64::S7:
+    case AArch64::S8:
+    case AArch64::S9:
+    case AArch64::S10:
+    case AArch64::S11:
+    case AArch64::S12:
+    case AArch64::S13:
+    case AArch64::S14:
+    case AArch64::S15:
+    case AArch64::S16:
+    case AArch64::S17:
+    case AArch64::S18:
+    case AArch64::S19:
+    case AArch64::S20:
+    case AArch64::S21:
+    case AArch64::S22:
+    case AArch64::S23:
+    case AArch64::S24:
+    case AArch64::S25:
+    case AArch64::S26:
+    case AArch64::S27:
+    case AArch64::S28:
+    case AArch64::S29:   // X29
+    case AArch64::S30:   // X30
+		case AArch64::H0:
+    case AArch64::H1:
+    case AArch64::H2:
+    case AArch64::H3:
+    case AArch64::H4:
+    case AArch64::H5:
+    case AArch64::H6:
+    case AArch64::H7:
+    case AArch64::H8:
+    case AArch64::H9:
+    case AArch64::H10:
+    case AArch64::H11:
+    case AArch64::H12:
+    case AArch64::H13:
+    case AArch64::H14:
+    case AArch64::H15:
+    case AArch64::H16:
+    case AArch64::H17:
+    case AArch64::H18:
+    case AArch64::H19:
+    case AArch64::H20:
+    case AArch64::H21:
+    case AArch64::H22:
+    case AArch64::H23:
+    case AArch64::H24:
+    case AArch64::H25:
+    case AArch64::H26:
+    case AArch64::H27:
+    case AArch64::H28:
+    case AArch64::H29:   // X29
+    case AArch64::H30:   // X30
+		case AArch64::B0:
+    case AArch64::B1:
+    case AArch64::B2:
+    case AArch64::B3:
+    case AArch64::B4:
+    case AArch64::B5:
+    case AArch64::B6:
+    case AArch64::B7:
+    case AArch64::B8:
+    case AArch64::B9:
+    case AArch64::B10:
+    case AArch64::B11:
+    case AArch64::B12:
+    case AArch64::B13:
+    case AArch64::B14:
+    case AArch64::B15:
+    case AArch64::B16:
+    case AArch64::B17:
+    case AArch64::B18:
+    case AArch64::B19:
+    case AArch64::B20:
+    case AArch64::B21:
+    case AArch64::B22:
+    case AArch64::B23:
+    case AArch64::B24:
+    case AArch64::B25:
+    case AArch64::B26:
+    case AArch64::B27:
+    case AArch64::B28:
+    case AArch64::B29:   // X29
+    case AArch64::B30:   // X30
+      return true;
+  }
+}
+
+
+bool ZomTagUtils::isLoadPair(const MachineInstr &MI)
+{
+	const auto opCode = MI.getOpcode();
+	switch(opCode)
+	{
+		default:
+			return false;
+		case AArch64::LDPXi:
+		case AArch64::LDPDi:
+		case AArch64::LDPQi:
+		case AArch64::LDNPQi:
+		case AArch64::LDNPXi:
+		case AArch64::LDNPDi:
+		case AArch64::LDPWi:
+		case AArch64::LDPSi:
+		case AArch64::LDNPWi:
+		case AArch64::LDNPSi:
+			return true;
+	}
+}
+
+bool ZomTagUtils::isStorePair(const MachineInstr &MI)
+{
+	const auto opCode = MI.getOpcode();
+	switch(opCode)
+	{
+		default:
+			return false;
+		case AArch64::STPQi:
+		case AArch64::STNPQi:
+		case AArch64::STPXi:
+		case AArch64::STPDi:
+		case AArch64::STNPXi:
+		case AArch64::STNPDi:
+		case AArch64::STPWi:
+		case AArch64::STPSi:
+		case AArch64::STNPWi:
+		case AArch64::STNPSi:
+			return true;
+	}
+}
+
 bool ZomTagUtils::isLoad(const MachineInstr &MI)
 {
   const auto opCode = MI.getOpcode();
@@ -328,3 +664,44 @@ bool ZomTagUtils::isLoad(const MachineInstr &MI)
       return true; 
   }
 }
+
+bool ZomTagUtils::isStore(const MachineInstr &MI)
+{
+  const auto opCode = MI.getOpcode();
+	switch(opCode)
+	{
+		default:
+			return false;
+		case AArch64::STRWpost:
+  	case AArch64::STURQi:
+  	case AArch64::STURXi:
+  	case AArch64::STURDi:
+  	case AArch64::STURWi:
+  	case AArch64::STURSi:
+  	case AArch64::STURHi:
+  	case AArch64::STURHHi:
+  	case AArch64::STURBi:
+  	case AArch64::STURBBi:
+  	case AArch64::STPQi:
+  	case AArch64::STNPQi:
+  	case AArch64::STRQui:
+  	case AArch64::STPXi:
+  	case AArch64::STPDi:
+  	case AArch64::STNPXi:
+  	case AArch64::STNPDi:
+  	case AArch64::STRXui:
+  	case AArch64::STRDui:
+  	case AArch64::STPWi:
+  	case AArch64::STPSi:
+  	case AArch64::STNPWi:
+  	case AArch64::STNPSi:
+  	case AArch64::STRWui:
+  	case AArch64::STRSui:
+  	case AArch64::STRHui:
+  	case AArch64::STRHHui:
+  	case AArch64::STRBui:
+  	case AArch64::STRBBui:
+    	return true;
+	}
+}
+ 

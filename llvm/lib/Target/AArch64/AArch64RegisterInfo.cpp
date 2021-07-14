@@ -123,6 +123,9 @@ AArch64RegisterInfo::getReservedRegs(const MachineFunction &MF) const {
   markSuperRegs(Reserved, AArch64::WSP);
   markSuperRegs(Reserved, AArch64::WZR);
 
+	markSuperRegs(Reserved, AArch64::X15);
+	markSuperRegs(Reserved, AArch64::W15);
+
   if (TFI->hasFP(MF) || TT.isOSDarwin()) {
     markSuperRegs(Reserved, AArch64::FP);
     markSuperRegs(Reserved, AArch64::W29);
@@ -163,6 +166,8 @@ bool AArch64RegisterInfo::isReservedReg(const MachineFunction &MF,
   case AArch64::W19:
   case AArch64::X19:
     return hasBasePointer(MF);
+	//case AArch64::X15:
+		//return true;
   }
 
   return false;

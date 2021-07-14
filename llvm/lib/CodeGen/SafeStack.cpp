@@ -524,8 +524,8 @@ Value *SafeStack::moveStaticAllocasToUnsafeStack(
   for (AllocaInst *AI : StaticAllocas) {
     Type *Ty = AI->getAllocatedType();
     uint64_t Size = getStaticAllocaAllocationSize(AI);
-		total_size += Size;
-		errs() << total_size << "\n";
+		//total_size += Size;
+		//errs() << total_size << "\n";
 
     if (Size == 0)
       Size = 1; // Don't create zero-sized stack objects.
@@ -580,6 +580,35 @@ Value *SafeStack::moveStaticAllocasToUnsafeStack(
     if (Size == 0)
       Size = 1; // Don't create zero-sized stack objects.
 
+/*
+		total_itr++;
+		if ((total_itr % 16 == 1) && (total_itr != 1))
+		{
+			LLVMContext& context = F.getContext();
+			IRBuilder<> builder(context);
+			builder.SetInsertPoint(cast<Instruction>(NewArg)->getNextNode());
+			
+			std::vector<llvm::Type *> name_set_func_args;
+			name_set_func_args.push_back(llvm::Type::getInt8Ty(context)->getPointerTo());
+			
+			ArrayRef<Type *> name_set_args_ref(name_set_func_args);
+			FunctionType *name_set_func_type = 
+				FunctionType::get(llvm::Type::getVoidTy(context), name_set_args_ref, false);
+
+			Constant *name_set_func = F.getParent()->getOrInsertFunction("unsafe_stack_region_alloc", name_set_func_type);
+			Value *name_val = builder.CreateGlobalStringPtr(F.getName());
+			Value *args[] = { name_val };
+			builder.CreateCall(name_set_func, args);
+
+			IRBuilder<> alloc(context);
+			alloc.SetInsertPoint(cast<Instruction>(NewArg)->getNextNode());
+			UnsafeStackPtr = TL->getSafeStackPointerLocation(alloc);
+
+			BasePointer = alloc.CreateLoad(UnsafeStackPtr, false, "unsafe_stack_ptr");
+			assert(BasePointer->getType() == StackPtrTy);
+		}
+*/
+
     Value *Off = IRB.CreateGEP(BasePointer, // BasePointer is i8*
                                ConstantInt::get(Int32Ty, -Offset));
     Value *NewArg = IRB.CreateBitCast(Off, Arg->getType(),
@@ -590,10 +619,9 @@ Value *SafeStack::moveStaticAllocasToUnsafeStack(
                       true, -Offset);
     Arg->replaceAllUsesWith(NewArg);
     IRB.SetInsertPoint(cast<Instruction>(NewArg)->getNextNode());
-    IRB.CreateMemCpy(Off, Arg, Size, Arg->getParamAlignment());
-  
-		errs() << "[SafeStack]\tIRB.CreateMemCpy\n";
-
+    Instruction *memcpy = IRB.CreateMemCpy(Off, Arg, Size, Arg->getParamAlignment());
+  	//memcpy->print(errs());
+		//errs() << "\n";
 	}
 
   // Allocate space for every unsafe static AllocaInst on the unsafe stack.
@@ -639,7 +667,7 @@ Value *SafeStack::moveStaticAllocasToUnsafeStack(
 			assert(BasePointer->getType() == StackPtrTy);	
 		}
 
-    errs() << "[SafeStack]\ttotal_itr: " << total_itr << "\n";
+    //errs() << "[SafeStack]\ttotal_itr: " << total_itr << "\n";
 
     IRB.SetInsertPoint(AI);
     unsigned Offset = SSL.getObjectOffset(AI);
@@ -854,8 +882,8 @@ bool SafeStack::runOnFunction(Function &F) {
 
   IRBuilder<> IRB(&F.front(), F.begin()->getFirstInsertionPt());
   UnsafeStackPtr = TL->getSafeStackPointerLocation(IRB);
-	UnsafeStackPtr->print(errs());
-	errs() << "\n";	
+	//UnsafeStackPtr->print(errs());
+	//errs() << "\n";	
 
   // Load the current stack pointer (we'll also use it as a base pointer).
   // FIXME: use a dedicated register for it ?

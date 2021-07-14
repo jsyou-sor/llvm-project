@@ -1,0 +1,1069 @@
+diff -ur zomtag-llvm/clang/lib/CodeGen/BackendUtil.cpp llvm-backup/clang/lib/CodeGen/BackendUtil.cpp
+--- zomtag-llvm/clang/lib/CodeGen/BackendUtil.cpp	2021-07-14 17:52:42.769741038 +0900
++++ llvm-backup/clang/lib/CodeGen/BackendUtil.cpp	2021-07-14 17:46:15.976826176 +0900
+@@ -172,6 +172,11 @@
+   PM.add(createZomtagMetaDataPass());
+ }
+ 
++static void addZomtagGlobalVariablePass(const PassManagerBuilder &Builder,
++																				legacy::PassManagerBase &PM) {
++	PM.add(createZomtagGlobalVariablePass());
++}
++
+ static void addSanitizerCoveragePass(const PassManagerBuilder &Builder,
+                                      legacy::PassManagerBase &PM) {
+   const PassManagerBuilderWrapper &BuilderWrapper =
+@@ -379,6 +384,11 @@
+   PMBuilder.addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0,
+                          addZomtagMetaDataPass);
+ 
++	PMBuilder.addExtension(PassManagerBuilder::EP_OptimizerLast,
++												 addZomtagGlobalVariablePass);
++	PMBuilder.addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0,
++												 addZomtagGlobalVariablePass);
++
+   if (CodeGenOpts.SanitizeCoverageType ||
+       CodeGenOpts.SanitizeCoverageIndirectCalls ||
+       CodeGenOpts.SanitizeCoverageTraceCmp) {
+Only in zomtag-llvm/: .git
+diff -ur zomtag-llvm/llvm/include/llvm/InitializePasses.h llvm-backup/llvm/include/llvm/InitializePasses.h
+--- zomtag-llvm/llvm/include/llvm/InitializePasses.h	2021-07-14 17:52:44.529781227 +0900
++++ llvm-backup/llvm/include/llvm/InitializePasses.h	2021-07-14 17:46:17.616864423 +0900
+@@ -78,6 +78,7 @@
+ void initializeBlockFrequencyInfoWrapperPassPass(PassRegistry&);
+ void initializeBoundsCheckingPass(PassRegistry&);
+ void initializeZomtagMetaDataPass(PassRegistry&);
++void initializeZomtagGlobalVariablePass(PassRegistry&);
+ void initializeBranchFolderPassPass(PassRegistry&);
+ void initializeBranchProbabilityInfoWrapperPassPass(PassRegistry&);
+ void initializeBranchRelaxationPass(PassRegistry&);
+diff -ur zomtag-llvm/llvm/include/llvm/LinkAllPasses.h llvm-backup/llvm/include/llvm/LinkAllPasses.h
+--- zomtag-llvm/llvm/include/llvm/LinkAllPasses.h	2021-07-14 17:52:44.529781227 +0900
++++ llvm-backup/llvm/include/llvm/LinkAllPasses.h	2021-07-14 17:46:17.640864983 +0900
+@@ -73,7 +73,8 @@
+       (void) llvm::createBoundsCheckingPass();
+       
+       (void) llvm::createZomtagMetaDataPass();
+-      
++			(void) llvm::createZomtagGlobalVariablePass();     
++ 
+       (void) llvm::createBreakCriticalEdgesPass();
+       (void) llvm::createCallGraphDOTPrinterPass();
+       (void) llvm::createCallGraphViewerPass();
+diff -ur zomtag-llvm/llvm/include/llvm/Transforms/Instrumentation.h llvm-backup/llvm/include/llvm/Transforms/Instrumentation.h
+--- zomtag-llvm/llvm/include/llvm/Transforms/Instrumentation.h	2021-07-14 17:52:44.549781683 +0900
++++ llvm-backup/llvm/include/llvm/Transforms/Instrumentation.h	2021-07-14 17:46:17.640864983 +0900
+@@ -174,8 +174,8 @@
+ // BoundsChecking - This pass instruments the code to perform run-time bounds
+ // checking on loads, stores, and other memory intrinsics.
+ FunctionPass *createBoundsCheckingPass();
+-
+ FunctionPass *createZomtagMetaDataPass();
++ModulePass *createZomtagGlobalVariablePass();
+ 
+ /// \brief Calculate what to divide by to scale counts.
+ ///
+diff -ur zomtag-llvm/llvm/lib/CodeGen/SafeStack.cpp llvm-backup/llvm/lib/CodeGen/SafeStack.cpp
+--- zomtag-llvm/llvm/lib/CodeGen/SafeStack.cpp	2021-07-14 17:52:44.589782598 +0900
++++ llvm-backup/llvm/lib/CodeGen/SafeStack.cpp	2021-07-14 17:46:17.652865262 +0900
+@@ -524,8 +524,8 @@
+   for (AllocaInst *AI : StaticAllocas) {
+     Type *Ty = AI->getAllocatedType();
+     uint64_t Size = getStaticAllocaAllocationSize(AI);
+-		total_size += Size;
+-		errs() << total_size << "\n";
++		//total_size += Size;
++		//errs() << total_size << "\n";
+ 
+     if (Size == 0)
+       Size = 1; // Don't create zero-sized stack objects.
+@@ -580,6 +580,35 @@
+     if (Size == 0)
+       Size = 1; // Don't create zero-sized stack objects.
+ 
++/*
++		total_itr++;
++		if ((total_itr % 16 == 1) && (total_itr != 1))
++		{
++			LLVMContext& context = F.getContext();
++			IRBuilder<> builder(context);
++			builder.SetInsertPoint(cast<Instruction>(NewArg)->getNextNode());
++			
++			std::vector<llvm::Type *> name_set_func_args;
++			name_set_func_args.push_back(llvm::Type::getInt8Ty(context)->getPointerTo());
++			
++			ArrayRef<Type *> name_set_args_ref(name_set_func_args);
++			FunctionType *name_set_func_type = 
++				FunctionType::get(llvm::Type::getVoidTy(context), name_set_args_ref, false);
++
++			Constant *name_set_func = F.getParent()->getOrInsertFunction("unsafe_stack_region_alloc", name_set_func_type);
++			Value *name_val = builder.CreateGlobalStringPtr(F.getName());
++			Value *args[] = { name_val };
++			builder.CreateCall(name_set_func, args);
++
++			IRBuilder<> alloc(context);
++			alloc.SetInsertPoint(cast<Instruction>(NewArg)->getNextNode());
++			UnsafeStackPtr = TL->getSafeStackPointerLocation(alloc);
++
++			BasePointer = alloc.CreateLoad(UnsafeStackPtr, false, "unsafe_stack_ptr");
++			assert(BasePointer->getType() == StackPtrTy);
++		}
++*/
++
+     Value *Off = IRB.CreateGEP(BasePointer, // BasePointer is i8*
+                                ConstantInt::get(Int32Ty, -Offset));
+     Value *NewArg = IRB.CreateBitCast(Off, Arg->getType(),
+@@ -590,10 +619,9 @@
+                       true, -Offset);
+     Arg->replaceAllUsesWith(NewArg);
+     IRB.SetInsertPoint(cast<Instruction>(NewArg)->getNextNode());
+-    IRB.CreateMemCpy(Off, Arg, Size, Arg->getParamAlignment());
+-  
+-		errs() << "[SafeStack]\tIRB.CreateMemCpy\n";
+-
++    Instruction *memcpy = IRB.CreateMemCpy(Off, Arg, Size, Arg->getParamAlignment());
++  	//memcpy->print(errs());
++		//errs() << "\n";
+ 	}
+ 
+   // Allocate space for every unsafe static AllocaInst on the unsafe stack.
+@@ -639,7 +667,7 @@
+ 			assert(BasePointer->getType() == StackPtrTy);	
+ 		}
+ 
+-    errs() << "[SafeStack]\ttotal_itr: " << total_itr << "\n";
++    //errs() << "[SafeStack]\ttotal_itr: " << total_itr << "\n";
+ 
+     IRB.SetInsertPoint(AI);
+     unsigned Offset = SSL.getObjectOffset(AI);
+@@ -854,8 +882,8 @@
+ 
+   IRBuilder<> IRB(&F.front(), F.begin()->getFirstInsertionPt());
+   UnsafeStackPtr = TL->getSafeStackPointerLocation(IRB);
+-	UnsafeStackPtr->print(errs());
+-	errs() << "\n";	
++	//UnsafeStackPtr->print(errs());
++	//errs() << "\n";	
+ 
+   // Load the current stack pointer (we'll also use it as a base pointer).
+   // FIXME: use a dedicated register for it ?
+diff -ur zomtag-llvm/llvm/lib/MC/ELFObjectWriter.cpp llvm-backup/llvm/lib/MC/ELFObjectWriter.cpp
+--- zomtag-llvm/llvm/lib/MC/ELFObjectWriter.cpp	2021-07-14 17:52:44.629783510 +0900
++++ llvm-backup/llvm/lib/MC/ELFObjectWriter.cpp	2021-07-14 17:46:17.664865542 +0900
+@@ -577,8 +577,8 @@
+ 
+       // It looks like gold has a bug (http://sourceware.org/PR16794) and can
+       // only handle section relocations to mergeable sections if using RELA.
+-      if (!hasRelocationAddend())
+-        return true;
++      //if (!hasRelocationAddend())
++        //return true;
+     }
+ 
+     // Most TLS relocations use a got, so they need the symbol. Even those that
+diff -ur zomtag-llvm/llvm/lib/Target/AArch64/AArch64FastISel.cpp llvm-backup/llvm/lib/Target/AArch64/AArch64FastISel.cpp
+--- zomtag-llvm/llvm/lib/Target/AArch64/AArch64FastISel.cpp	2021-07-14 17:52:44.649783967 +0900
++++ llvm-backup/llvm/lib/Target/AArch64/AArch64FastISel.cpp	2021-07-14 17:46:17.676865822 +0900
+@@ -5070,8 +5070,8 @@
+       if (TotalOffs) {
+         
+         auto ZTData = I->getMetadata(ZTMetaDataKind);
+-        errs() << "[AArch64FastISel::selectGetElementPtr]\tcalling emitAdd_ri_ (1)" <<
+-          (ZTData != nullptr ? " with ZTData" : " without ZTData") << "\n";
++        //errs() << "[AArch64FastISel::selectGetElementPtr]\tcalling emitAdd_ri_ (1)" <<
++          //(ZTData != nullptr ? " with ZTData" : " without ZTData") << "\n";
+         
+         //N = emitAdd_ri_(VT, N, NIsKill, TotalOffs);
+ 				N = emitAdd_ri_zt(VT, N, NIsKill, TotalOffs, ZTData);
+diff -ur zomtag-llvm/llvm/lib/Target/AArch64/AArch64.h llvm-backup/llvm/lib/Target/AArch64/AArch64.h
+--- zomtag-llvm/llvm/lib/Target/AArch64/AArch64.h	2021-07-14 17:52:44.649783967 +0900
++++ llvm-backup/llvm/lib/Target/AArch64/AArch64.h	2021-07-14 17:46:17.676865822 +0900
+@@ -63,6 +63,7 @@
+ void initializeAArch64RedundantCopyEliminationPass(PassRegistry&);
+ void initializeAArch64StorePairSuppressPass(PassRegistry&);
+ void initializeLDTLSCleanupPass(PassRegistry&);
++void initializeTestZomTagPass(PassRegistry&);
+ } // end namespace llvm
+ 
+ #endif
+diff -ur zomtag-llvm/llvm/lib/Target/AArch64/AArch64RegisterInfo.cpp llvm-backup/llvm/lib/Target/AArch64/AArch64RegisterInfo.cpp
+--- zomtag-llvm/llvm/lib/Target/AArch64/AArch64RegisterInfo.cpp	2021-07-14 17:52:44.657784150 +0900
++++ llvm-backup/llvm/lib/Target/AArch64/AArch64RegisterInfo.cpp	2021-07-14 17:46:17.676865822 +0900
+@@ -123,6 +123,9 @@
+   markSuperRegs(Reserved, AArch64::WSP);
+   markSuperRegs(Reserved, AArch64::WZR);
+ 
++	markSuperRegs(Reserved, AArch64::X15);
++	markSuperRegs(Reserved, AArch64::W15);
++
+   if (TFI->hasFP(MF) || TT.isOSDarwin()) {
+     markSuperRegs(Reserved, AArch64::FP);
+     markSuperRegs(Reserved, AArch64::W29);
+@@ -163,6 +166,8 @@
+   case AArch64::W19:
+   case AArch64::X19:
+     return hasBasePointer(MF);
++	//case AArch64::X15:
++		//return true;
+   }
+ 
+   return false;
+diff -ur zomtag-llvm/llvm/lib/Target/AArch64/AArch64TargetMachine.cpp llvm-backup/llvm/lib/Target/AArch64/AArch64TargetMachine.cpp
+--- zomtag-llvm/llvm/lib/Target/AArch64/AArch64TargetMachine.cpp	2021-07-14 17:52:44.657784150 +0900
++++ llvm-backup/llvm/lib/Target/AArch64/AArch64TargetMachine.cpp	2021-07-14 17:46:17.676865822 +0900
+@@ -488,7 +488,7 @@
+     // Improve performance for some FP/SIMD code for A57.
+     addPass(createAArch64A57FPLoadBalancing());
+ 
+-  addPass(createAArch64TestZomTagPass());
++  //addPass(createAArch64TestZomTagPass());
+ }
+ 
+ void AArch64PassConfig::addPreSched2() {
+@@ -497,6 +497,8 @@
+   // Use load/store pair instructions when possible.
+   if (TM->getOptLevel() != CodeGenOpt::None && EnableLoadStoreOpt)
+     addPass(createAArch64LoadStoreOptimizationPass());
++
++	//addPass(createAArch64TestZomTagPass());
+ }
+ 
+ void AArch64PassConfig::addPreEmitPass() {
+@@ -511,5 +513,5 @@
+       TM->getTargetTriple().isOSBinFormatMachO())
+     addPass(createAArch64CollectLOHPass());
+   
+-  //addPass(createAArch64TestZomTagPass());
++  addPass(createAArch64TestZomTagPass());
+ }
+diff -ur zomtag-llvm/llvm/lib/Target/AArch64/AArch64TestZomTag.cpp llvm-backup/llvm/lib/Target/AArch64/AArch64TestZomTag.cpp
+--- zomtag-llvm/llvm/lib/Target/AArch64/AArch64TestZomTag.cpp	2021-07-14 17:52:44.661784242 +0900
++++ llvm-backup/llvm/lib/Target/AArch64/AArch64TestZomTag.cpp	2021-07-14 17:46:17.672865728 +0900
+@@ -35,9 +35,25 @@
+ #include "AArch64ZomTagUtils.h"
+ 
+ #define DEBUG_TYPE "aarch64-zomtag"
++#define AARCH64_ZOMTAG_PASS_NAME "AArch64 Zomtag Pass"
+ 
+ using namespace llvm;
+ 
++/* Options */
++static cl::opt<bool> option_imprecise1("zometag-imprecise1",
++		cl::desc("Instrument imprecise tag loading 1"));
++static cl::opt<bool> option_imprecise2("zometag-imprecise2",
++		cl::desc("Instrument imprecise tag loading 2"));
++static cl::opt<bool> option_nop("zometag-nop",
++		cl::desc("Instrument nop tag loading"));
++static cl::opt<bool> option_precise("zometag-precise",
++		cl::desc("Instrument precise tag loading"));
++
++namespace llvm
++{
++	void initializeTestZomTagPass(PassRegistry &);
++}
++
+ namespace
+ {
+   class TestZomTag : public MachineFunctionPass 
+@@ -45,7 +61,7 @@
+     public:
+       static char ID;
+       TestZomTag() : MachineFunctionPass(ID) {
+-        //initializeTestZomTagPass(*PassRegistry::getPassRegistry());    
++        initializeTestZomTagPass(*PassRegistry::getPassRegistry());    
+       }
+       StringRef getPassName() const override { return "zomtag-ptr"; }
+ 
+@@ -64,6 +80,8 @@
+   };
+ } // end anonymous namespace
+ 
++INITIALIZE_PASS(TestZomTag, "AArch64 Zomtag Pass", AARCH64_ZOMTAG_PASS_NAME, false, false)
++
+ FunctionPass *llvm::createAArch64TestZomTagPass()
+ {
+   return new TestZomTag();
+@@ -78,9 +96,6 @@
+ 
+ bool TestZomTag::runOnMachineFunction(MachineFunction &MF)
+ {
+-  //DEBUG(dbgs() << getPassName() << '\n');
+-  //errs() << "function " << MF.getName() << '\n';
+-
+   TM = &MF.getTarget();
+   STI = &MF.getSubtarget<AArch64Subtarget>();
+   TII = STI->getInstrInfo();
+@@ -92,6 +107,318 @@
+   {
+     for (auto MIi = MBB.instr_begin(); MIi != MBB.instr_end(); MIi++)
+     {
++
++			if (zomtagUtils->isLoad(*MIi))
++			{
++				unsigned x;
++				x = MIi->getOperand(1).getReg();
++				if (zomtagUtils->isLoadPair(*MIi))
++					x = MIi->getOperand(2).getReg();
++				if (x != AArch64::SP && x != AArch64::FP)
++				{
++					if (MIi->getOperand(1).isReg())
++					{
++						const auto &DL = MIi->getDebugLoc();
++						unsigned src = MIi->getOperand(1).getReg();
++						unsigned target = MIi->getOperand(0).getReg();
++					
++						if (zomtagUtils->isLoadPair(*MIi))
++							src = MIi->getOperand(2).getReg();
++					
++						const unsigned DstReg = AArch64::X15;
++						const unsigned Imm = 0x7fbe;
++						
++						if (option_imprecise1)
++						{
++							BuildMI(MBB, MIi, DL, TII->get(AArch64::MOVZXi), AArch64::X15)
++											.addImm(Imm)
++											.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
++
++							if (!(zomtagUtils->isPrePostIndexed(*MIi)))
++							{
++								BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), AArch64::X15)
++												.addReg(AArch64::X15)
++												.addReg(src)
++												.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
++
++								BuildMI(MBB, MIi, DL, TII->get(AArch64::LDRBBui), AArch64::XZR).addReg(AArch64::X15).addImm(0);
++							}
++						}
++
++						if (option_imprecise2)
++						{
++							BuildMI(MBB, MIi, DL, TII->get(AArch64::MOVZXi), AArch64::X15)
++											.addImm(Imm)
++											.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
++
++							BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXri), AArch64::X15)
++											.addReg(AArch64::X15)
++											.addImm(0);
++
++							BuildMI(MBB, MIi, DL, TII->get(AArch64::LDRBBui), AArch64::XZR).addReg(AArch64::X15).addImm(0);
++						}
++
++						if (option_nop)
++						{
++							BuildMI(MBB, MIi, DL, TII->get(AArch64::MOVZXi), AArch64::X15)
++											.addImm(Imm)
++											.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
++
++							BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), AArch64::X15)
++											.addReg(AArch64::X15)
++											.addReg(src)
++											.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
++
++							BuildMI(MBB, MIi, DL, TII->get(AArch64::HINT)).addImm(0);
++						}
++
++						if (option_precise)
++						{
++							BuildMI(MBB, MIi, DL, TII->get(AArch64::MOVZXi), AArch64::X15)
++											.addImm(Imm)
++											.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
++
++							// Non-Pre/PostIndexed Load
++							if (!(zomtagUtils->isPrePostIndexed(*MIi)) &&
++									!(zomtagUtils->isQReg(MIi->getOperand(0).getReg())))
++							{
++								// ADD instrumentation
++								// Check LDP
++								if (!(zomtagUtils->isLoadPair(*MIi)))
++									BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), AArch64::X15)
++													.addReg(AArch64::X15)
++													.addReg(MIi->getOperand(1).getReg())
++													.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
++								else
++									BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), AArch64::X15)
++													.addReg(AArch64::X15)
++													.addReg(MIi->getOperand(2).getReg())
++													.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
++								
++								// LDAR instrumentation
++								if (!(zomtagUtils->isLoadPair(*MIi)))
++								{
++									if (MIi->getOperand(0).getReg() == MIi->getOperand(1).getReg() ||
++											zomtagUtils->getCorrespondingReg(MIi->getOperand(1).getReg()) == MIi->getOperand(0).getReg())
++										BuildMI(MBB, MIi, DL, TII->get(AArch64::LDARB), AArch64::XZR).addReg(AArch64::X15).addImm(0);
++										//int a = 0;
++									else
++									{
++										if (MIi->getNumOperands() <= 4)
++											BuildMI(MBB, MIi, DL, TII->get(AArch64::LDARB), MIi->getOperand(0).getReg()).addReg(AArch64::X15).addImm(0);
++									}
++								}
++								else // LDP
++								{
++									if (MIi->getOperand(0).getReg() == MIi->getOperand(2).getReg() ||
++											zomtagUtils->getCorrespondingReg(MIi->getOperand(2).getReg()) == MIi->getOperand(0).getReg() ||
++											MIi->getOperand(1).getReg() == MIi->getOperand(2).getReg() ||
++											zomtagUtils->getCorrespondingReg(MIi->getOperand(2).getReg()) == MIi->getOperand(1).getReg())
++										BuildMI(MBB, MIi, DL, TII->get(AArch64::LDARB), AArch64::XZR).addReg(AArch64::X15).addImm(0);
++									else
++										BuildMI(MBB, MIi, DL, TII->get(AArch64::LDARB), MIi->getOperand(0).getReg()).addReg(AArch64::X15).addImm(0);
++								}
++							}
++
++							if (!(zomtagUtils->isPrePostIndexed(*MIi)) &&
++									(zomtagUtils->isQReg(MIi->getOperand(0).getReg())))
++							{
++								if (!(zomtagUtils->isLoadPair(*MIi)))
++								{
++									BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), AArch64::X15)
++													.addReg(AArch64::X15)
++													.addReg(MIi->getOperand(1).getReg())
++													.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
++									BuildMI(MBB, MIi, DL, TII->get(AArch64::LDRQui), MIi->getOperand(0).getReg()).addReg(AArch64::X15).addImm(0);
++								}
++							}
++
++/*
++							if ((zomtagUtils->isPrePostIndexed(*MIi)) &&
++									!(zomtagUtils->isQReg(MIi->getOperand(0).getReg())))
++							{
++									MIi->print(errs());
++									errs() << "\n";
++									MIi->getOperand(0).print(errs());
++									errs() << "\n";
++									MIi->getOperand(1).print(errs());
++									errs() << "\n";
++							}
++*/
++						}
++					}
++				}
++			}
++
++			if (zomtagUtils->isStore(*MIi))
++			{
++				unsigned x;
++				x = MIi->getOperand(1).getReg();
++
++				if (zomtagUtils->isStorePair(*MIi))
++					x = MIi->getOperand(2).getReg();
++
++				if (x != AArch64::SP && x != AArch64::FP)
++				{
++					if (MIi->getOperand(1).isReg())
++					{
++/*
++						const auto &DL = MIi->getDebugLoc();
++						unsigned src = MIi->getOperand(1).getReg();
++					
++						if (zomtagUtils->isStorePair(*MIi))
++							src = MIi->getOperand(2).getReg();
++					
++						const unsigned DstReg = AArch64::X15;
++						const unsigned Imm = 0x7fbe;
++						//const unsigned Imm = 0x1;
++					
++						BuildMI(MBB, MIi, DL, TII->get(AArch64::MOVZXi), AArch64::X15)
++										.addImm(Imm)
++										.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
++
++						BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), AArch64::X15)
++										.addReg(AArch64::X15)
++										.addReg(src)
++										.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
++
++						BuildMI(MBB, MIi, DL, TII->get(AArch64::LDRBBui), AArch64::XZR).addReg(AArch64::X15).addImm(0);
++*/
++
++						const auto &DL = MIi->getDebugLoc();
++						unsigned src = MIi->getOperand(1).getReg();
++						unsigned target = MIi->getOperand(0).getReg();
++					
++						if (zomtagUtils->isStorePair(*MIi))
++							src = MIi->getOperand(2).getReg();
++					
++						const unsigned DstReg = AArch64::X15;
++						const unsigned Imm = 0x7fbe;
++						
++						if (option_imprecise1)
++						{
++							BuildMI(MBB, MIi, DL, TII->get(AArch64::MOVZXi), AArch64::X15)
++											.addImm(Imm)
++											.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
++
++							if (!(zomtagUtils->isPrePostIndexed(*MIi)))
++							{
++								BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), AArch64::X15)
++												.addReg(AArch64::X15)
++												.addReg(src)
++												.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
++
++								BuildMI(MBB, MIi, DL, TII->get(AArch64::LDRBBui), AArch64::XZR).addReg(AArch64::X15).addImm(0);
++							}
++						}
++
++						if (option_imprecise2)
++						{
++							BuildMI(MBB, MIi, DL, TII->get(AArch64::MOVZXi), AArch64::X15)
++											.addImm(Imm)
++											.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
++
++							BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXri), AArch64::X15)
++											.addReg(AArch64::X15)
++											.addImm(0);
++
++							BuildMI(MBB, MIi, DL, TII->get(AArch64::LDRBBui), AArch64::XZR).addReg(AArch64::X15).addImm(0);
++						}
++
++						if (option_nop)
++						{
++							BuildMI(MBB, MIi, DL, TII->get(AArch64::MOVZXi), AArch64::X15)
++											.addImm(Imm)
++											.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
++
++							BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), AArch64::X15)
++											.addReg(AArch64::X15)
++											.addReg(src)
++											.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
++
++							BuildMI(MBB, MIi, DL, TII->get(AArch64::HINT)).addImm(0);
++						}
++
++						if (option_precise)
++						{
++							BuildMI(MBB, MIi, DL, TII->get(AArch64::MOVZXi), AArch64::X15)
++											.addImm(Imm)
++											.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
++
++							// Non-Pre/PostIndexed Load
++							if (!(zomtagUtils->isPrePostIndexed(*MIi)) &&
++									!(zomtagUtils->isQReg(MIi->getOperand(0).getReg())))
++							{
++								// ADD instrumentation
++								// Check STP
++								if (!(zomtagUtils->isStorePair(*MIi)))
++									BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), AArch64::X15)
++													.addReg(AArch64::X15)
++													.addReg(MIi->getOperand(1).getReg())
++													.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
++								else
++									BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), AArch64::X15)
++													.addReg(AArch64::X15)
++													.addReg(MIi->getOperand(2).getReg())
++													.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
++								
++								// LDAR instrumentation
++								if (!(zomtagUtils->isStorePair(*MIi)))
++								{
++									if (MIi->getOperand(0).getReg() == MIi->getOperand(1).getReg() ||
++											zomtagUtils->getCorrespondingReg(MIi->getOperand(1).getReg()) == MIi->getOperand(0).getReg())
++										BuildMI(MBB, MIi, DL, TII->get(AArch64::LDARB), AArch64::XZR).addReg(AArch64::X15).addImm(0);
++										//int a = 0;
++									else
++									{
++										if (MIi->getNumOperands() <= 4)
++											BuildMI(MBB, MIi, DL, TII->get(AArch64::LDARB), AArch64::XZR).addReg(AArch64::X15).addImm(0);
++										else
++											MIi->print(errs());
++									}
++								}
++								else // STP
++								{
++									if (MIi->getOperand(0).getReg() == MIi->getOperand(2).getReg() ||
++											zomtagUtils->getCorrespondingReg(MIi->getOperand(2).getReg()) == MIi->getOperand(0).getReg() ||
++											MIi->getOperand(1).getReg() == MIi->getOperand(2).getReg() ||
++											zomtagUtils->getCorrespondingReg(MIi->getOperand(2).getReg()) == MIi->getOperand(1).getReg())
++										BuildMI(MBB, MIi, DL, TII->get(AArch64::LDARB), AArch64::XZR).addReg(AArch64::X15).addImm(0);
++									else
++										BuildMI(MBB, MIi, DL, TII->get(AArch64::LDARB), AArch64::XZR).addReg(AArch64::X15).addImm(0);
++								}
++							}
++
++							if (!(zomtagUtils->isPrePostIndexed(*MIi)) &&
++									(zomtagUtils->isQReg(MIi->getOperand(0).getReg())))
++							{
++								if (!(zomtagUtils->isStorePair(*MIi)))
++								{
++									BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), AArch64::X15)
++													.addReg(AArch64::X15)
++													.addReg(MIi->getOperand(1).getReg())
++													.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
++									BuildMI(MBB, MIi, DL, TII->get(AArch64::LDRQui), AArch64::XZR).addReg(AArch64::X15).addImm(0);
++								}
++							}
++
++/*
++							if ((zomtagUtils->isPrePostIndexed(*MIi)) &&
++									!(zomtagUtils->isQReg(MIi->getOperand(0).getReg())))
++							{
++									MIi->print(errs());
++									errs() << "\n";
++									MIi->getOperand(0).print(errs());
++									errs() << "\n";
++									MIi->getOperand(1).print(errs());
++									errs() << "\n";
++							}
++*/
++						}
++					}
++				}
++			}
++
+       if (zomtagUtils->isInterestingLoad(*MIi))
+       {
+         //MIi->print(errs());
+@@ -125,11 +452,11 @@
+         const int64_t ext = AArch64_AM::SXTW;
+ 				const int64_t amount = MIi->getOperand(4).getImm();
+ 
+-        //BuildMI(MBB, MIi, DL, TII->get(op), dst).addReg(src).addReg(off_w).addImm(ext).addImm(amount);
++        BuildMI(MBB, MIi, DL, TII->get(op), dst).addReg(src).addReg(off_w).addImm(ext).addImm(amount);
+       
+-        //auto tmp = MIi;
+-        //MIi--;
+-        //tmp->removeFromParent();
++        auto tmp = MIi;
++        MIi--;
++        tmp->removeFromParent();
+       }
+ 
+ 			if (zomtagUtils->isAddSub(*MIi))
+diff -ur zomtag-llvm/llvm/lib/Target/AArch64/AArch64ZomTagUtils.cpp llvm-backup/llvm/lib/Target/AArch64/AArch64ZomTagUtils.cpp
+--- zomtag-llvm/llvm/lib/Target/AArch64/AArch64ZomTagUtils.cpp	2021-07-14 17:52:44.661784242 +0900
++++ llvm-backup/llvm/lib/Target/AArch64/AArch64ZomTagUtils.cpp	2021-07-14 17:46:17.676865822 +0900
+@@ -116,6 +116,134 @@
+   }
+ }
+ 
++bool ZomTagUtils::isPrePostIndexed(const MachineInstr &MI)
++{
++	const auto opCode = MI.getOpcode();
++	switch(opCode)
++	{
++		default:
++			return false;
++		case AArch64::LDRSBWpre:
++  	case AArch64::LDRSHWpre:
++  	case AArch64::STRBBpre:
++  	case AArch64::LDRBBpre:
++  	case AArch64::STRHHpre:
++  	case AArch64::LDRHHpre:
++  	case AArch64::STRWpre:
++  	case AArch64::LDRWpre:
++  	case AArch64::LDRSBWpost:
++  	case AArch64::LDRSHWpost:
++  	case AArch64::STRBBpost:
++  	case AArch64::LDRBBpost:
++  	case AArch64::STRHHpost:
++  	case AArch64::LDRHHpost:
++  	case AArch64::STRWpost:
++  	case AArch64::LDRWpost:
++  	case AArch64::LDRSBXpre:
++  	case AArch64::LDRSHXpre:
++	  case AArch64::STRXpre:
++  	case AArch64::LDRSWpre:
++  	case AArch64::LDRXpre:
++  	case AArch64::LDRSBXpost:
++  	case AArch64::LDRSHXpost:
++  	case AArch64::STRXpost:
++  	case AArch64::LDRSWpost:
++  	case AArch64::LDRXpost:
++  	case AArch64::LDRQpre:
++  	case AArch64::STRQpre:
++  	case AArch64::LDRQpost:
++  	case AArch64::STRQpost:
++  	case AArch64::LDRDpre:
++  	case AArch64::STRDpre:
++  	case AArch64::LDRDpost:
++  	case AArch64::STRDpost:
++  	case AArch64::LDRSpre:
++  	case AArch64::STRSpre:
++  	case AArch64::LDRSpost:
++  	case AArch64::STRSpost:
++  	case AArch64::LDRHpre:
++  	case AArch64::STRHpre:
++  	case AArch64::LDRHpost:
++  	case AArch64::STRHpost:
++  	case AArch64::LDRBpre:
++  	case AArch64::STRBpre:
++  	case AArch64::LDRBpost:
++  	case AArch64::STRBpost:
++			return true;
++	}
++}
++
++unsigned ZomTagUtils::getQReg(const unsigned XReg)
++{
++	switch(XReg)
++	{
++		default:
++			return XReg;
++		case AArch64::X0:
++      return AArch64::Q0;
++    case AArch64::X1:
++      return AArch64::Q1;
++    case AArch64::X2:
++      return AArch64::Q2;
++    case AArch64::X3:
++      return AArch64::Q3;
++    case AArch64::X4:
++      return AArch64::Q4;
++    case AArch64::X5:
++      return AArch64::Q5;
++    case AArch64::X6:
++      return AArch64::Q6;
++    case AArch64::X7:
++      return AArch64::Q7;
++    case AArch64::X8:
++      return AArch64::Q8;
++    case AArch64::X9:
++      return AArch64::Q9;
++    case AArch64::X10:
++      return AArch64::Q10;
++    case AArch64::X11:
++      return AArch64::Q11;
++    case AArch64::X12:
++      return AArch64::Q12;
++    case AArch64::X13:
++      return AArch64::Q13;
++    case AArch64::X14:
++      return AArch64::Q14;
++    case AArch64::X15:
++      return AArch64::Q15;
++    case AArch64::X16:
++      return AArch64::Q16;
++    case AArch64::X17:
++      return AArch64::Q17;
++    case AArch64::X18:
++      return AArch64::Q18;
++    case AArch64::X19:
++      return AArch64::Q19;
++    case AArch64::X20:
++      return AArch64::Q20;
++    case AArch64::X21:
++      return AArch64::Q21;
++    case AArch64::X22:
++      return AArch64::Q22;
++    case AArch64::X23:
++      return AArch64::Q23;
++    case AArch64::X24:
++      return AArch64::Q24;
++    case AArch64::X25:
++      return AArch64::Q25;
++    case AArch64::X26:
++      return AArch64::Q26;
++    case AArch64::X27:
++      return AArch64::Q27;
++    case AArch64::X28:
++      return AArch64::Q28;
++		case AArch64::FP:
++			return AArch64::Q29;
++		case AArch64::LR:
++			return AArch64::Q30;
++	}
++}
++
+ unsigned ZomTagUtils::getCorrespondingReg(const unsigned XReg)
+ {
+   switch(XReg)
+@@ -259,6 +387,214 @@
+   }
+ }
+ 
++bool ZomTagUtils::isQReg(const unsigned reg)
++{
++  switch(reg)
++  {
++    default:
++      return false;
++    case AArch64::Q0:
++    case AArch64::Q1:
++    case AArch64::Q2:
++    case AArch64::Q3:
++    case AArch64::Q4:
++    case AArch64::Q5:
++    case AArch64::Q6:
++    case AArch64::Q7:
++    case AArch64::Q8:
++    case AArch64::Q9:
++    case AArch64::Q10:
++    case AArch64::Q11:
++    case AArch64::Q12:
++    case AArch64::Q13:
++    case AArch64::Q14:
++    case AArch64::Q15:
++    case AArch64::Q16:
++    case AArch64::Q17:
++    case AArch64::Q18:
++    case AArch64::Q19:
++    case AArch64::Q20:
++    case AArch64::Q21:
++    case AArch64::Q22:
++    case AArch64::Q23:
++    case AArch64::Q24:
++    case AArch64::Q25:
++    case AArch64::Q26:
++    case AArch64::Q27:
++    case AArch64::Q28:
++    case AArch64::Q29:   // X29
++    case AArch64::Q30:   // X30
++		case AArch64::D0:
++    case AArch64::D1:
++    case AArch64::D2:
++    case AArch64::D3:
++    case AArch64::D4:
++    case AArch64::D5:
++    case AArch64::D6:
++    case AArch64::D7:
++    case AArch64::D8:
++    case AArch64::D9:
++    case AArch64::D10:
++    case AArch64::D11:
++    case AArch64::D12:
++    case AArch64::D13:
++    case AArch64::D14:
++    case AArch64::D15:
++    case AArch64::D16:
++    case AArch64::D17:
++    case AArch64::D18:
++    case AArch64::D19:
++    case AArch64::D20:
++    case AArch64::D21:
++    case AArch64::D22:
++    case AArch64::D23:
++    case AArch64::D24:
++    case AArch64::D25:
++    case AArch64::D26:
++    case AArch64::D27:
++    case AArch64::D28:
++    case AArch64::D29:   // X29
++    case AArch64::D30:   // X30
++		case AArch64::S0:
++    case AArch64::S1:
++    case AArch64::S2:
++    case AArch64::S3:
++    case AArch64::S4:
++    case AArch64::S5:
++    case AArch64::S6:
++    case AArch64::S7:
++    case AArch64::S8:
++    case AArch64::S9:
++    case AArch64::S10:
++    case AArch64::S11:
++    case AArch64::S12:
++    case AArch64::S13:
++    case AArch64::S14:
++    case AArch64::S15:
++    case AArch64::S16:
++    case AArch64::S17:
++    case AArch64::S18:
++    case AArch64::S19:
++    case AArch64::S20:
++    case AArch64::S21:
++    case AArch64::S22:
++    case AArch64::S23:
++    case AArch64::S24:
++    case AArch64::S25:
++    case AArch64::S26:
++    case AArch64::S27:
++    case AArch64::S28:
++    case AArch64::S29:   // X29
++    case AArch64::S30:   // X30
++		case AArch64::H0:
++    case AArch64::H1:
++    case AArch64::H2:
++    case AArch64::H3:
++    case AArch64::H4:
++    case AArch64::H5:
++    case AArch64::H6:
++    case AArch64::H7:
++    case AArch64::H8:
++    case AArch64::H9:
++    case AArch64::H10:
++    case AArch64::H11:
++    case AArch64::H12:
++    case AArch64::H13:
++    case AArch64::H14:
++    case AArch64::H15:
++    case AArch64::H16:
++    case AArch64::H17:
++    case AArch64::H18:
++    case AArch64::H19:
++    case AArch64::H20:
++    case AArch64::H21:
++    case AArch64::H22:
++    case AArch64::H23:
++    case AArch64::H24:
++    case AArch64::H25:
++    case AArch64::H26:
++    case AArch64::H27:
++    case AArch64::H28:
++    case AArch64::H29:   // X29
++    case AArch64::H30:   // X30
++		case AArch64::B0:
++    case AArch64::B1:
++    case AArch64::B2:
++    case AArch64::B3:
++    case AArch64::B4:
++    case AArch64::B5:
++    case AArch64::B6:
++    case AArch64::B7:
++    case AArch64::B8:
++    case AArch64::B9:
++    case AArch64::B10:
++    case AArch64::B11:
++    case AArch64::B12:
++    case AArch64::B13:
++    case AArch64::B14:
++    case AArch64::B15:
++    case AArch64::B16:
++    case AArch64::B17:
++    case AArch64::B18:
++    case AArch64::B19:
++    case AArch64::B20:
++    case AArch64::B21:
++    case AArch64::B22:
++    case AArch64::B23:
++    case AArch64::B24:
++    case AArch64::B25:
++    case AArch64::B26:
++    case AArch64::B27:
++    case AArch64::B28:
++    case AArch64::B29:   // X29
++    case AArch64::B30:   // X30
++      return true;
++  }
++}
++
++
++bool ZomTagUtils::isLoadPair(const MachineInstr &MI)
++{
++	const auto opCode = MI.getOpcode();
++	switch(opCode)
++	{
++		default:
++			return false;
++		case AArch64::LDPXi:
++		case AArch64::LDPDi:
++		case AArch64::LDPQi:
++		case AArch64::LDNPQi:
++		case AArch64::LDNPXi:
++		case AArch64::LDNPDi:
++		case AArch64::LDPWi:
++		case AArch64::LDPSi:
++		case AArch64::LDNPWi:
++		case AArch64::LDNPSi:
++			return true;
++	}
++}
++
++bool ZomTagUtils::isStorePair(const MachineInstr &MI)
++{
++	const auto opCode = MI.getOpcode();
++	switch(opCode)
++	{
++		default:
++			return false;
++		case AArch64::STPQi:
++		case AArch64::STNPQi:
++		case AArch64::STPXi:
++		case AArch64::STPDi:
++		case AArch64::STNPXi:
++		case AArch64::STNPDi:
++		case AArch64::STPWi:
++		case AArch64::STPSi:
++		case AArch64::STNPWi:
++		case AArch64::STNPSi:
++			return true;
++	}
++}
++
+ bool ZomTagUtils::isLoad(const MachineInstr &MI)
+ {
+   const auto opCode = MI.getOpcode();
+@@ -328,3 +664,44 @@
+       return true; 
+   }
+ }
++
++bool ZomTagUtils::isStore(const MachineInstr &MI)
++{
++  const auto opCode = MI.getOpcode();
++	switch(opCode)
++	{
++		default:
++			return false;
++		case AArch64::STRWpost:
++  	case AArch64::STURQi:
++  	case AArch64::STURXi:
++  	case AArch64::STURDi:
++  	case AArch64::STURWi:
++  	case AArch64::STURSi:
++  	case AArch64::STURHi:
++  	case AArch64::STURHHi:
++  	case AArch64::STURBi:
++  	case AArch64::STURBBi:
++  	case AArch64::STPQi:
++  	case AArch64::STNPQi:
++  	case AArch64::STRQui:
++  	case AArch64::STPXi:
++  	case AArch64::STPDi:
++  	case AArch64::STNPXi:
++  	case AArch64::STNPDi:
++  	case AArch64::STRXui:
++  	case AArch64::STRDui:
++  	case AArch64::STPWi:
++  	case AArch64::STPSi:
++  	case AArch64::STNPWi:
++  	case AArch64::STNPSi:
++  	case AArch64::STRWui:
++  	case AArch64::STRSui:
++  	case AArch64::STRHui:
++  	case AArch64::STRHHui:
++  	case AArch64::STRBui:
++  	case AArch64::STRBBui:
++    	return true;
++	}
++}
++ 
+diff -ur zomtag-llvm/llvm/lib/Target/AArch64/AArch64ZomTagUtils.h llvm-backup/llvm/lib/Target/AArch64/AArch64ZomTagUtils.h
+--- zomtag-llvm/llvm/lib/Target/AArch64/AArch64ZomTagUtils.h	2021-07-14 17:52:44.661784242 +0900
++++ llvm-backup/llvm/lib/Target/AArch64/AArch64ZomTagUtils.h	2021-07-14 17:46:17.676865822 +0900
+@@ -28,12 +28,18 @@
+ 		bool isAddSub(MachineInstr &MI);
+     bool isXReg(const unsigned reg);
+     bool isLoad(const MachineInstr &MI);
+-    unsigned getCorrespondingLoad(const unsigned opCode);
++    bool isStore(const MachineInstr &MI);
++		unsigned getCorrespondingLoad(const unsigned opCode);
+     unsigned getCorrespondingStore(const unsigned opCode);
+     unsigned getCorrespondingReg(const unsigned XReg);
+     bool isInterestingLoad(const MachineInstr &MI);
+     bool isInterestingStore(const MachineInstr &MI);
+     bool isRegisterOffsetLoad(const MachineInstr &MI);
++		bool isLoadPair(const MachineInstr &MI);
++		bool isStorePair(const MachineInstr &MI);
++		bool isPrePostIndexed(const MachineInstr &MI);
++		unsigned getQReg(const unsigned XReg);
++		bool isQReg(const unsigned reg);
+   };
+ }
+ 
+diff -ur zomtag-llvm/llvm/lib/Transforms/Instrumentation/CMakeLists.txt llvm-backup/llvm/lib/Transforms/Instrumentation/CMakeLists.txt
+--- zomtag-llvm/llvm/lib/Transforms/Instrumentation/CMakeLists.txt	2021-07-14 17:52:44.801787438 +0900
++++ llvm-backup/llvm/lib/Transforms/Instrumentation/CMakeLists.txt	2021-07-14 17:46:17.724866942 +0900
+@@ -12,6 +12,7 @@
+   ThreadSanitizer.cpp
+   EfficiencySanitizer.cpp
+   ZomtagMetaData.cpp
++	ZomtagGlobalVariable.cpp
+ 
+   ADDITIONAL_HEADER_DIRS
+   ${LLVM_MAIN_INCLUDE_DIR}/llvm/Transforms
+Only in llvm-backup/llvm/lib/Transforms/Instrumentation: stack.h
+Only in llvm-backup/llvm/lib/Transforms/Instrumentation: ZomtagGlobalVariable.cpp
+Only in llvm-backup/llvm/utils/llvm-build/llvmbuild: componentinfo.pyc
+Only in llvm-backup/llvm/utils/llvm-build/llvmbuild: configutil.pyc
+Only in llvm-backup/llvm/utils/llvm-build/llvmbuild: __init__.pyc
+Only in llvm-backup/llvm/utils/llvm-build/llvmbuild: main.pyc
+Only in llvm-backup/llvm/utils/llvm-build/llvmbuild: util.pyc

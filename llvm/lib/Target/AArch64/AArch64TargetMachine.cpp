@@ -488,7 +488,7 @@ void AArch64PassConfig::addPostRegAlloc() {
     // Improve performance for some FP/SIMD code for A57.
     addPass(createAArch64A57FPLoadBalancing());
 
-  addPass(createAArch64TestZomTagPass());
+  //addPass(createAArch64TestZomTagPass());
 }
 
 void AArch64PassConfig::addPreSched2() {
@@ -497,6 +497,8 @@ void AArch64PassConfig::addPreSched2() {
   // Use load/store pair instructions when possible.
   if (TM->getOptLevel() != CodeGenOpt::None && EnableLoadStoreOpt)
     addPass(createAArch64LoadStoreOptimizationPass());
+
+	//addPass(createAArch64TestZomTagPass());
 }
 
 void AArch64PassConfig::addPreEmitPass() {
@@ -511,5 +513,5 @@ void AArch64PassConfig::addPreEmitPass() {
       TM->getTargetTriple().isOSBinFormatMachO())
     addPass(createAArch64CollectLOHPass());
   
-  //addPass(createAArch64TestZomTagPass());
+  addPass(createAArch64TestZomTagPass());
 }

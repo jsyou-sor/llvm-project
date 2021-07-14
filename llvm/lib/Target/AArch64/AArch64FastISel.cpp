@@ -5070,8 +5070,8 @@ bool AArch64FastISel::selectGetElementPtr(const Instruction *I) {
       if (TotalOffs) {
         
         auto ZTData = I->getMetadata(ZTMetaDataKind);
-        errs() << "[AArch64FastISel::selectGetElementPtr]\tcalling emitAdd_ri_ (1)" <<
-          (ZTData != nullptr ? " with ZTData" : " without ZTData") << "\n";
+        //errs() << "[AArch64FastISel::selectGetElementPtr]\tcalling emitAdd_ri_ (1)" <<
+          //(ZTData != nullptr ? " with ZTData" : " without ZTData") << "\n";
         
         //N = emitAdd_ri_(VT, N, NIsKill, TotalOffs);
 				N = emitAdd_ri_zt(VT, N, NIsKill, TotalOffs, ZTData);

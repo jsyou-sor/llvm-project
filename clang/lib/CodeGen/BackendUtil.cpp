@@ -172,6 +172,11 @@ static void addZomtagMetaDataPass(const PassManagerBuilder &Builder,
   PM.add(createZomtagMetaDataPass());
 }
 
+static void addZomtagGlobalVariablePass(const PassManagerBuilder &Builder,
+																				legacy::PassManagerBase &PM) {
+	PM.add(createZomtagGlobalVariablePass());
+}
+
 static void addSanitizerCoveragePass(const PassManagerBuilder &Builder,
                                      legacy::PassManagerBase &PM) {
   const PassManagerBuilderWrapper &BuilderWrapper =
@@ -378,6 +383,11 @@ void EmitAssemblyHelper::CreatePasses(legacy::PassManager &MPM,
 												 addZomtagMetaDataPass);
   PMBuilder.addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0,
                          addZomtagMetaDataPass);
+
+	PMBuilder.addExtension(PassManagerBuilder::EP_OptimizerLast,
+												 addZomtagGlobalVariablePass);
+	PMBuilder.addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0,
+												 addZomtagGlobalVariablePass);
 
   if (CodeGenOpts.SanitizeCoverageType ||
       CodeGenOpts.SanitizeCoverageIndirectCalls ||

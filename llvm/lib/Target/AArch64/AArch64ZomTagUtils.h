@@ -28,12 +28,18 @@ namespace llvm
 		bool isAddSub(MachineInstr &MI);
     bool isXReg(const unsigned reg);
     bool isLoad(const MachineInstr &MI);
-    unsigned getCorrespondingLoad(const unsigned opCode);
+    bool isStore(const MachineInstr &MI);
+		unsigned getCorrespondingLoad(const unsigned opCode);
     unsigned getCorrespondingStore(const unsigned opCode);
     unsigned getCorrespondingReg(const unsigned XReg);
     bool isInterestingLoad(const MachineInstr &MI);
     bool isInterestingStore(const MachineInstr &MI);
     bool isRegisterOffsetLoad(const MachineInstr &MI);
+		bool isLoadPair(const MachineInstr &MI);
+		bool isStorePair(const MachineInstr &MI);
+		bool isPrePostIndexed(const MachineInstr &MI);
+		unsigned getQReg(const unsigned XReg);
+		bool isQReg(const unsigned reg);
   };
 }
 

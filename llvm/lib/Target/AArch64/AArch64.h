@@ -63,6 +63,7 @@ void initializeAArch64PromoteConstantPass(PassRegistry&);
 void initializeAArch64RedundantCopyEliminationPass(PassRegistry&);
 void initializeAArch64StorePairSuppressPass(PassRegistry&);
 void initializeLDTLSCleanupPass(PassRegistry&);
+void initializeTestZomTagPass(PassRegistry&);
 } // end namespace llvm
 
 #endif

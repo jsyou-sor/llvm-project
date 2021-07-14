@@ -12,6 +12,7 @@ add_llvm_library(LLVMInstrumentation
   ThreadSanitizer.cpp
   EfficiencySanitizer.cpp
   ZomtagMetaData.cpp
+	ZomtagGlobalVariable.cpp
 
   ADDITIONAL_HEADER_DIRS
   ${LLVM_MAIN_INCLUDE_DIR}/llvm/Transforms
