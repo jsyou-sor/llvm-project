@@ -40,6 +40,7 @@ namespace llvm
 		bool isPrePostIndexed(const MachineInstr &MI);
 		unsigned getQReg(const unsigned XReg);
 		bool isQReg(const unsigned reg);
+		bool isLDRD(const MachineInstr &MI);
   };
 }
 

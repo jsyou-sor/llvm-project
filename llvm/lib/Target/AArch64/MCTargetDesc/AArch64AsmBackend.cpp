@@ -200,8 +200,10 @@ static uint64_t adjustFixupValue(const MCFixup &Fixup, uint64_t Value,
     return Value;
   case AArch64::fixup_aarch64_pcrel_branch14:
     // Signed 16-bit immediate
-    if (Ctx && (SignedValue > 32767 || SignedValue < -32768))
-      Ctx->reportError(Fixup.getLoc(), "fixup value out of range 8");
+    if (Ctx && (SignedValue > 32767 || SignedValue < -32768)) {
+      //Ctx->dump();
+			Ctx->reportError(Fixup.getLoc(), "fixup value out of range 8");
+		}
     // Low two bits are not encoded (4-byte alignment assumed).
     if (Ctx && (Value & 0x3))
       Ctx->reportError(Fixup.getLoc(), "fixup not sufficiently aligned");

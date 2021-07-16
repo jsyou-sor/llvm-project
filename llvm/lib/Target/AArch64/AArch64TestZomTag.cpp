@@ -116,7 +116,7 @@ bool TestZomTag::runOnMachineFunction(MachineFunction &MF)
 					x = MIi->getOperand(2).getReg();
 				if (x != AArch64::SP && x != AArch64::FP)
 				{
-					if (MIi->getOperand(1).isReg())
+					if (MIi->getOperand(1).isReg() && !(zomtagUtils->isLDRD(*MIi)))
 					{
 						const auto &DL = MIi->getDebugLoc();
 						unsigned src = MIi->getOperand(1).getReg();
@@ -151,8 +151,9 @@ bool TestZomTag::runOnMachineFunction(MachineFunction &MF)
 											.addImm(Imm)
 											.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
 
-							BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXri), AArch64::X15)
+							BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), AArch64::X15)
 											.addReg(AArch64::X15)
+											.addReg(AArch64::XZR)
 											.addImm(0);
 
 							BuildMI(MBB, MIi, DL, TII->get(AArch64::LDRBBui), AArch64::XZR).addReg(AArch64::X15).addImm(0);
@@ -163,12 +164,10 @@ bool TestZomTag::runOnMachineFunction(MachineFunction &MF)
 							BuildMI(MBB, MIi, DL, TII->get(AArch64::MOVZXi), AArch64::X15)
 											.addImm(Imm)
 											.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
-
 							BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), AArch64::X15)
 											.addReg(AArch64::X15)
 											.addReg(src)
 											.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
-
 							BuildMI(MBB, MIi, DL, TII->get(AArch64::HINT)).addImm(0);
 						}
 
@@ -318,8 +317,9 @@ bool TestZomTag::runOnMachineFunction(MachineFunction &MF)
 											.addImm(Imm)
 											.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
 
-							BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXri), AArch64::X15)
+							BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), AArch64::X15)
 											.addReg(AArch64::X15)
+											.addReg(AArch64::XZR)
 											.addImm(0);
 
 							BuildMI(MBB, MIi, DL, TII->get(AArch64::LDRBBui), AArch64::XZR).addReg(AArch64::X15).addImm(0);
@@ -335,7 +335,6 @@ bool TestZomTag::runOnMachineFunction(MachineFunction &MF)
 											.addReg(AArch64::X15)
 											.addReg(src)
 											.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
-
 							BuildMI(MBB, MIi, DL, TII->get(AArch64::HINT)).addImm(0);
 						}
 

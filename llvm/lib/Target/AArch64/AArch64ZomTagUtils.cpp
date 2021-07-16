@@ -595,6 +595,20 @@ bool ZomTagUtils::isStorePair(const MachineInstr &MI)
 	}
 }
 
+bool ZomTagUtils::isLDRD(const MachineInstr &MI)
+{
+	const auto opCode = MI.getOpcode();
+	switch (opCode)
+	{
+		default:
+			return false;
+		case AArch64::LDRDui:
+		case AArch64::LDRDroX:
+		case AArch64::LDRDroW:
+			return true;
+	}
+}
+
 bool ZomTagUtils::isLoad(const MachineInstr &MI)
 {
   const auto opCode = MI.getOpcode();
