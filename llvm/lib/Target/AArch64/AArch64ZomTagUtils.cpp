@@ -315,6 +315,49 @@ unsigned ZomTagUtils::getCorrespondingReg(const unsigned XReg)
   }
 }
 
+unsigned ZomTagUtils::getCorrespondingLoadStore(const unsigned opCode)
+{
+  switch(opCode)
+  {
+    default:
+      return 0;
+    case AArch64::LDRSBWroX:
+      return AArch64::LDRSBWroW;
+    case AArch64::LDRSHWroX:
+      return AArch64::LDRSHWroW;
+    case AArch64::LDRWroX:
+      return AArch64::LDRWroW;
+    case AArch64::LDRXroX:
+      return AArch64::LDRXroW;
+    case AArch64::LDRSBXroX:
+      return AArch64::LDRSBXroW;
+    case AArch64::LDRSHXroX:
+      return AArch64::LDRSHXroW;
+    case AArch64::LDRSWroX:
+      return AArch64::LDRSWroW;
+    case AArch64::LDRBBroX:
+      return AArch64::LDRBBroW;
+    case AArch64::LDRHHroX:
+      return AArch64::LDRHHroW;
+    case AArch64::LDRSroX:
+      return AArch64::LDRSroW;
+    case AArch64::LDRDroX:
+      return AArch64::LDRDroW;
+		case AArch64::STRBBroX:
+      return AArch64::STRBBroW;
+    case AArch64::STRHHroX:
+      return AArch64::STRHHroW;
+    case AArch64::STRWroX:
+      return AArch64::STRWroW;
+    case AArch64::STRXroX:
+      return AArch64::STRXroW;
+    case AArch64::STRSroX:
+      return AArch64::STRSroW;
+    case AArch64::STRDroX:
+      return AArch64::STRDroW; 
+	}
+}
+
 unsigned ZomTagUtils::getCorrespondingLoad(const unsigned opCode)
 {
   switch(opCode)
