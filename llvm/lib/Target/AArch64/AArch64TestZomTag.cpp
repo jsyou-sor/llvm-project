@@ -48,6 +48,7 @@ static cl::opt<bool> option_tl_nop("zometag-tl-nop", cl::desc("Instrument tag lo
 static cl::opt<bool> option_tl_pre("zometag-tl-pre", cl::desc("Instrument tag loading ovh (pre)"));
 static cl::opt<bool> option_tl_imp1("zometag-tl-imp1", cl::desc("Instrument tag loading ovh (imp1)"));
 static cl::opt<bool> option_tl_imp2("zometag-tl-imp2", cl::desc("Instrument tag loading ovh (imp2)"));
+static cl::opt<bool> option_tl_sparc("zometag-tl-sparc", cl::desc("Instrument tag loading ovh (sparc)"));
 
 static cl::opt<bool> option_imprecise1("zometag-imprecise1",
 		cl::desc("Instrument imprecise tag loading 1"));
@@ -428,7 +429,9 @@ bool TestZomTag::runOnMachineFunction(MachineFunction &MF)
 				}
 			}
 
-			instrumentTagLoading(MBB, MIi);
+			if (option_tl_nop || option_tl_imp1 ||
+					option_tl_pre || option_tl_imp2)
+				instrumentTagLoading(MBB, MIi);
 
 			if (option_default)
 				instrumentZoneIsolation(MBB, MIi);
@@ -448,77 +451,123 @@ void TestZomTag::instrumentTagLoading(MachineBasicBlock &MBB, MachineBasicBlock:
 	if (zomtagUtils->isPrePostIndexed(*MIi))
 		return;
 
-	if (zomtagUtils->isLoad(*MIi))
-	{
-		if (!(zomtagUtils->isLoadPair(*MIi)))
-		{
-			dst = MIi->getOperand(0).getReg();
-			mem = MIi->getOperand(1).getReg();
+	if (!(MIi->getOperand(0).isReg()) ||
+			!(MIi->getOperand(1).isReg()))
+		return;
 
-			if (mem != AArch64::SP && mem != AArch64::FP)
-			{
-				// MOV X15, 0x7fbe, LSL, 32
-				BuildMI(MBB, MIi, DL, TII->get(AArch64::MOVZXi), x15)
-						.addImm(imm)
-						.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
+	if (MIi->getNumOperands() > 4)
+		return;
+
+	if (zomtagUtils->isLoad(*MIi) || zomtagUtils->isStore(*MIi))
+	{
+		dst = MIi->getOperand(0).getReg();
+		mem = MIi->getOperand(1).getReg();
+		if (zomtagUtils->isLoadPair(*MIi) ||
+				zomtagUtils->isStorePair(*MIi))
+			mem = MIi->getOperand(2).getReg();
+
+		if (mem != AArch64::SP && mem != AArch64::FP)
+		{
+			// MOV X15, 0x7fbe, LSL, 32
+			BuildMI(MBB, MIi, DL, TII->get(AArch64::MOVZXi), x15)
+					.addImm(imm)
+					.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
 				
-				if (option_tl_nop)
-				{
-					BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
-							.addReg(x15)
-							.addReg(mem)
-							.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
-					BuildMI(MBB, MIi, DL, TII->get(AArch64::HINT)).addImm(0);
-				}
-				if (option_tl_imp1)
-				{
-					BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
-							.addReg(x15)
-							.addReg(mem)
-							.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
-					BuildMI(MBB, MIi, DL, TII->get(AArch64::LDRBBui), xzr)
-							.addReg(x15)
-							.addImm(0);
-				}
-				if (option_tl_imp2)
-				{
-					BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
-							.addReg(x15)
-							.addReg(xzr)
-							.addImm(0);
-					BuildMI(MBB, MIi, DL, TII->get(AArch64::LDRBBui), xzr)
-							.addReg(x15)
-							.addImm(0);
-				}
-				if (option_tl_pre)
-				{
-					assert(mem.isReg());
-					BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
+			if (option_tl_nop)
+			{
+				BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
 						.addReg(x15)
 						.addReg(mem)
 						.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
-
-					auto MIOpcode = zomtagUtils->isQReg(dst) ? AArch64::LDRQui : AArch64::LDARB;
-
-					if ((dst == mem) ||
-							(dst == zomtagUtils->getCorrespondingReg(mem)))
-						BuildMI(MBB, MIi, DL, TII->get(MIOpcode), xzr)
+				BuildMI(MBB, MIi, DL, TII->get(AArch64::HINT)).addImm(0);
+			}
+			if (option_tl_imp1)
+			{
+				if (!option_tl_sparc)
+				{
+					BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
 							.addReg(x15)
-							.addImm(0);
-					else
-						BuildMI(MBB, MIi, DL, TII->get(MIOpcode), dst)
-							.addReg(x15)
-							.addImm(0);
+							.addReg(mem)
+							.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
+					BuildMI(MBB, MIi, DL, TII->get(AArch64::LDRBBui), xzr)
+						.addReg(x15)
+						.addImm(0);
 				}
+				if (option_tl_sparc)
+				{
+					BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
+							.addReg(x15)
+							.addReg(mem)
+							.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 7));
+					BuildMI(MBB, MIi, DL, TII->get(AArch64::LDRBBui), xzr)
+						.addReg(x15)
+						.addImm(0);
+				}
+/*
+				BuildMI(MBB, MIi, DL, TII->get(AArch64::LDRBBui), xzr)
+						.addReg(x15)
+						.addImm(0);
+*/
+			}
+			if (option_tl_imp2)
+			{
+/*
+				BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
+						.addReg(x15)
+						.addReg(xzr)
+						.addImm(0);
+*/
+				if (!option_tl_sparc)
+					BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
+							.addReg(x15)
+							.addReg(mem)
+							.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
+				if (option_tl_sparc)				
+					BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
+							.addReg(x15)
+							.addReg(mem)
+							.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 7));
+
+				BuildMI(MBB, MIi, DL, TII->get(AArch64::LDRBBui), xzr)
+						.addReg(x15)
+						.addImm(0);
+			}
+			if (option_tl_pre)
+			{
+				assert(mem.isReg());
+/*
+				BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
+					.addReg(x15)
+					.addReg(mem)
+					.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
+*/
+				if (!option_tl_sparc)
+					BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
+							.addReg(x15)
+							.addReg(mem)
+							.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
+				if (option_tl_sparc)				
+					BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
+							.addReg(x15)
+							.addReg(mem)
+							.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 7));
+
+
+				auto MIOpcode = zomtagUtils->isQReg(dst) ? AArch64::LDRQui : AArch64::LDARB;
+
+				if ((dst == mem) ||
+						(dst == zomtagUtils->getCorrespondingReg(mem)) ||
+						(zomtagUtils->isStore(*MIi)))
+					BuildMI(MBB, MIi, DL, TII->get(MIOpcode), xzr)
+						.addReg(x15)
+						.addImm(0);
+				else
+					BuildMI(MBB, MIi, DL, TII->get(MIOpcode), dst)
+						.addReg(x15)
+						.addImm(0);
 			}
 		}
-		
-		else // Load Pair
-		{
-
-		}
 	}
-
 	return;
 }
 

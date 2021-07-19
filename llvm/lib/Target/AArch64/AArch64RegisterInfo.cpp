@@ -166,8 +166,9 @@ bool AArch64RegisterInfo::isReservedReg(const MachineFunction &MF,
   case AArch64::W19:
   case AArch64::X19:
     return hasBasePointer(MF);
-	//case AArch64::X15:
-		//return true;
+	case AArch64::X15:
+	case AArch64::W15:
+		return true;
   }
 
   return false;

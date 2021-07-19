@@ -528,7 +528,10 @@ void EmitAssemblyHelper::CreateTargetMachine(bool MustCreateTM) {
       .Case("kernel", llvm::CodeModel::Kernel)
       .Case("medium", llvm::CodeModel::Medium)
       .Case("large", llvm::CodeModel::Large)
-      .Case("default", llvm::CodeModel::Default)
+      //.Case("default", llvm::CodeModel::Default)
+			.Case("default", LangOpts.Sanitize.has(SanitizerKind::SafeStack) ?
+												llvm::CodeModel::Large :
+												llvm::CodeModel::Default)
       .Default(~0u);
   assert(CodeModel != ~0u && "invalid code model!");
   llvm::CodeModel::Model CM = static_cast<llvm::CodeModel::Model>(CodeModel);
