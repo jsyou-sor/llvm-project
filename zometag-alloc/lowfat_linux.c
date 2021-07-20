@@ -48,7 +48,8 @@ static void lowfat_random_page(void *buf)
     if (!inited)
     {
         inited = true;
-	    fd = open(path, O_RDONLY | O_CLOEXEC);
+	    fd = open(path, O_RDONLY | O_CLOEXEC | O_CREAT);
+			fd = open(path, O_RDONLY | O_CLOEXEC | O_CREAT, S_IRWXU);
 	    if (fd < 0)
 	        lowfat_error("failed to open \"%s\": %s", path, strerror(errno));
     }

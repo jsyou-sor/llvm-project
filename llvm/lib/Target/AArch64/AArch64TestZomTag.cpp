@@ -498,7 +498,7 @@ void TestZomTag::instrumentTagLoading(MachineBasicBlock &MBB, MachineBasicBlock:
 					BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
 							.addReg(x15)
 							.addReg(mem)
-							.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 7));
+							.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
 					BuildMI(MBB, MIi, DL, TII->get(AArch64::LDRBBui), xzr)
 						.addReg(x15)
 						.addImm(0);
@@ -520,13 +520,13 @@ void TestZomTag::instrumentTagLoading(MachineBasicBlock &MBB, MachineBasicBlock:
 				if (!option_tl_sparc)
 					BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
 							.addReg(x15)
-							.addReg(mem)
-							.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
+							.addReg(xzr)
+							.addImm(0);
 				if (option_tl_sparc)				
 					BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
 							.addReg(x15)
-							.addReg(mem)
-							.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 7));
+							.addReg(xzr)
+							.addImm(0);
 
 				BuildMI(MBB, MIi, DL, TII->get(AArch64::LDRBBui), xzr)
 						.addReg(x15)

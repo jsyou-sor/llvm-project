@@ -18,7 +18,7 @@ fi
 CLANG=/home/odroid/build/bin/clang
 CLANGXX=/home/odroid/build/bin/clang++
 CONFIG="sizes.cfg 32"
-LOWFAT_SRC=/home/odroid/zometag-alloc/ref/LowFat
+LOWFAT_SRC=/home/odroid/zomtag-llvm/zometag-alloc/ref/LowFat
 RUNTIME_PATH=${LOWFAT_SRC}/llvm-4.0.0.src/projects/compiler-rt/lib/lowfat/
 INSTRUMENTATION_PATH=${LOWFAT_SRC}/llvm-4.0.0.src/lib/Transforms/Instrumentation/
 CLANGLIB_PATH=${LOWFAT_SRC}/llvm-4.0.0.src/tools/clang/lib/Basic/
@@ -40,7 +40,7 @@ cd ${LOWFAT_SRC}/config
 #cp lowfat_config.h lowfat_config.c /home/odroid/allocator/
 
 echo -e "${GREEN}$0${OFF}: creating liblowfat.preload.so standalone..."
-cd /home/odroid/zometag-alloc
+cd /home/odroid/zomtag-llvm/zometag-alloc
 $CLANG -D_GNU_SOURCE -DLOWFAT_STANDALONE -DLOWFAT_NO_PROTECT -fPIC -shared \
 	-o liblowfat.preload.so -std=gnu99 -m64 "-I./" \
 	-DLOWFAT_LINUX -O2 "./lowfat.c"
