@@ -119,316 +119,6 @@ bool TestZomTag::runOnMachineFunction(MachineFunction &MF)
   {
     for (auto MIi = MBB.instr_begin(); MIi != MBB.instr_end(); MIi++)
     {
-			if (zomtagUtils->isLoad(*MIi))
-			{
-				unsigned x;
-				x = MIi->getOperand(1).getReg();
-				if (zomtagUtils->isLoadPair(*MIi))
-					x = MIi->getOperand(2).getReg();
-				if (x != AArch64::SP && x != AArch64::FP)
-				{
-					if (MIi->getOperand(1).isReg() && !(zomtagUtils->isLDRD(*MIi)))
-					{
-						const auto &DL = MIi->getDebugLoc();
-						unsigned src = MIi->getOperand(1).getReg();
-						unsigned target = MIi->getOperand(0).getReg();
-					
-						if (zomtagUtils->isLoadPair(*MIi))
-							src = MIi->getOperand(2).getReg();
-					
-						const unsigned DstReg = AArch64::X15;
-						const unsigned Imm = 0x7fbe;
-						
-						if (option_imprecise1)
-						{
-							BuildMI(MBB, MIi, DL, TII->get(AArch64::MOVZXi), AArch64::X15)
-											.addImm(Imm)
-											.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
-
-							if (!(zomtagUtils->isPrePostIndexed(*MIi)))
-							{
-								BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), AArch64::X15)
-												.addReg(AArch64::X15)
-												.addReg(src)
-												.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
-
-								BuildMI(MBB, MIi, DL, TII->get(AArch64::LDRBBui), AArch64::XZR).addReg(AArch64::X15).addImm(0);
-							}
-						}
-
-						if (option_imprecise2)
-						{
-							BuildMI(MBB, MIi, DL, TII->get(AArch64::MOVZXi), AArch64::X15)
-											.addImm(Imm)
-											.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
-
-							BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), AArch64::X15)
-											.addReg(AArch64::X15)
-											.addReg(AArch64::XZR)
-											.addImm(0);
-
-							BuildMI(MBB, MIi, DL, TII->get(AArch64::LDRBBui), AArch64::XZR).addReg(AArch64::X15).addImm(0);
-						}
-
-						if (option_nop)
-						{
-							BuildMI(MBB, MIi, DL, TII->get(AArch64::MOVZXi), AArch64::X15)
-											.addImm(Imm)
-											.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
-							BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), AArch64::X15)
-											.addReg(AArch64::X15)
-											.addReg(src)
-											.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
-							BuildMI(MBB, MIi, DL, TII->get(AArch64::HINT)).addImm(0);
-						}
-
-						if (option_precise)
-						{
-							BuildMI(MBB, MIi, DL, TII->get(AArch64::MOVZXi), AArch64::X15)
-											.addImm(Imm)
-											.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
-
-							// Non-Pre/PostIndexed Load
-							if (!(zomtagUtils->isPrePostIndexed(*MIi)) &&
-									!(zomtagUtils->isQReg(MIi->getOperand(0).getReg())))
-							{
-								// ADD instrumentation
-								// Check LDP
-								if (!(zomtagUtils->isLoadPair(*MIi)))
-									BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), AArch64::X15)
-													.addReg(AArch64::X15)
-													.addReg(MIi->getOperand(1).getReg())
-													.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
-								else
-									BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), AArch64::X15)
-													.addReg(AArch64::X15)
-													.addReg(MIi->getOperand(2).getReg())
-													.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
-								
-								// LDAR instrumentation
-								if (!(zomtagUtils->isLoadPair(*MIi)))
-								{
-									if (MIi->getOperand(0).getReg() == MIi->getOperand(1).getReg() ||
-											zomtagUtils->getCorrespondingReg(MIi->getOperand(1).getReg()) == MIi->getOperand(0).getReg())
-										BuildMI(MBB, MIi, DL, TII->get(AArch64::LDARB), AArch64::XZR).addReg(AArch64::X15).addImm(0);
-										//int a = 0;
-									else
-									{
-										if (MIi->getNumOperands() <= 4)
-											BuildMI(MBB, MIi, DL, TII->get(AArch64::LDARB), MIi->getOperand(0).getReg()).addReg(AArch64::X15).addImm(0);
-									}
-								}
-								else // LDP
-								{
-									if (MIi->getOperand(0).getReg() == MIi->getOperand(2).getReg() ||
-											zomtagUtils->getCorrespondingReg(MIi->getOperand(2).getReg()) == MIi->getOperand(0).getReg() ||
-											MIi->getOperand(1).getReg() == MIi->getOperand(2).getReg() ||
-											zomtagUtils->getCorrespondingReg(MIi->getOperand(2).getReg()) == MIi->getOperand(1).getReg())
-										BuildMI(MBB, MIi, DL, TII->get(AArch64::LDARB), AArch64::XZR).addReg(AArch64::X15).addImm(0);
-									else
-										BuildMI(MBB, MIi, DL, TII->get(AArch64::LDARB), MIi->getOperand(0).getReg()).addReg(AArch64::X15).addImm(0);
-								}
-							}
-
-							if (!(zomtagUtils->isPrePostIndexed(*MIi)) &&
-									(zomtagUtils->isQReg(MIi->getOperand(0).getReg())))
-							{
-								if (!(zomtagUtils->isLoadPair(*MIi)))
-								{
-									BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), AArch64::X15)
-													.addReg(AArch64::X15)
-													.addReg(MIi->getOperand(1).getReg())
-													.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
-									BuildMI(MBB, MIi, DL, TII->get(AArch64::LDRQui), MIi->getOperand(0).getReg()).addReg(AArch64::X15).addImm(0);
-								}
-							}
-
-/*
-							if ((zomtagUtils->isPrePostIndexed(*MIi)) &&
-									!(zomtagUtils->isQReg(MIi->getOperand(0).getReg())))
-							{
-									MIi->print(errs());
-									errs() << "\n";
-									MIi->getOperand(0).print(errs());
-									errs() << "\n";
-									MIi->getOperand(1).print(errs());
-									errs() << "\n";
-							}
-*/
-						}
-					}
-				}
-			}
-
-			if (zomtagUtils->isStore(*MIi))
-			{
-				unsigned x;
-				x = MIi->getOperand(1).getReg();
-
-				if (zomtagUtils->isStorePair(*MIi))
-					x = MIi->getOperand(2).getReg();
-
-				if (x != AArch64::SP && x != AArch64::FP)
-				{
-					if (MIi->getOperand(1).isReg())
-					{
-/*
-						const auto &DL = MIi->getDebugLoc();
-						unsigned src = MIi->getOperand(1).getReg();
-					
-						if (zomtagUtils->isStorePair(*MIi))
-							src = MIi->getOperand(2).getReg();
-					
-						const unsigned DstReg = AArch64::X15;
-						const unsigned Imm = 0x7fbe;
-						//const unsigned Imm = 0x1;
-					
-						BuildMI(MBB, MIi, DL, TII->get(AArch64::MOVZXi), AArch64::X15)
-										.addImm(Imm)
-										.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
-
-						BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), AArch64::X15)
-										.addReg(AArch64::X15)
-										.addReg(src)
-										.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
-
-						BuildMI(MBB, MIi, DL, TII->get(AArch64::LDRBBui), AArch64::XZR).addReg(AArch64::X15).addImm(0);
-*/
-
-						const auto &DL = MIi->getDebugLoc();
-						unsigned src = MIi->getOperand(1).getReg();
-						unsigned target = MIi->getOperand(0).getReg();
-					
-						if (zomtagUtils->isStorePair(*MIi))
-							src = MIi->getOperand(2).getReg();
-					
-						const unsigned DstReg = AArch64::X15;
-						const unsigned Imm = 0x7fbe;
-						
-						if (option_imprecise1)
-						{
-							BuildMI(MBB, MIi, DL, TII->get(AArch64::MOVZXi), AArch64::X15)
-											.addImm(Imm)
-											.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
-
-							if (!(zomtagUtils->isPrePostIndexed(*MIi)))
-							{
-								BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), AArch64::X15)
-												.addReg(AArch64::X15)
-												.addReg(src)
-												.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
-
-								BuildMI(MBB, MIi, DL, TII->get(AArch64::LDRBBui), AArch64::XZR).addReg(AArch64::X15).addImm(0);
-							}
-						}
-
-						if (option_imprecise2)
-						{
-							BuildMI(MBB, MIi, DL, TII->get(AArch64::MOVZXi), AArch64::X15)
-											.addImm(Imm)
-											.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
-
-							BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), AArch64::X15)
-											.addReg(AArch64::X15)
-											.addReg(AArch64::XZR)
-											.addImm(0);
-
-							BuildMI(MBB, MIi, DL, TII->get(AArch64::LDRBBui), AArch64::XZR).addReg(AArch64::X15).addImm(0);
-						}
-
-						if (option_nop)
-						{
-							BuildMI(MBB, MIi, DL, TII->get(AArch64::MOVZXi), AArch64::X15)
-											.addImm(Imm)
-											.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
-
-							BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), AArch64::X15)
-											.addReg(AArch64::X15)
-											.addReg(src)
-											.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
-							BuildMI(MBB, MIi, DL, TII->get(AArch64::HINT)).addImm(0);
-						}
-
-						if (option_precise)
-						{
-							BuildMI(MBB, MIi, DL, TII->get(AArch64::MOVZXi), AArch64::X15)
-											.addImm(Imm)
-											.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
-
-							// Non-Pre/PostIndexed Load
-							if (!(zomtagUtils->isPrePostIndexed(*MIi)) &&
-									!(zomtagUtils->isQReg(MIi->getOperand(0).getReg())))
-							{
-								// ADD instrumentation
-								// Check STP
-								if (!(zomtagUtils->isStorePair(*MIi)))
-									BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), AArch64::X15)
-													.addReg(AArch64::X15)
-													.addReg(MIi->getOperand(1).getReg())
-													.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
-								else
-									BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), AArch64::X15)
-													.addReg(AArch64::X15)
-													.addReg(MIi->getOperand(2).getReg())
-													.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
-								
-								// LDAR instrumentation
-								if (!(zomtagUtils->isStorePair(*MIi)))
-								{
-									if (MIi->getOperand(0).getReg() == MIi->getOperand(1).getReg() ||
-											zomtagUtils->getCorrespondingReg(MIi->getOperand(1).getReg()) == MIi->getOperand(0).getReg())
-										BuildMI(MBB, MIi, DL, TII->get(AArch64::LDARB), AArch64::XZR).addReg(AArch64::X15).addImm(0);
-										//int a = 0;
-									else
-									{
-										if (MIi->getNumOperands() <= 4)
-											BuildMI(MBB, MIi, DL, TII->get(AArch64::LDARB), AArch64::XZR).addReg(AArch64::X15).addImm(0);
-										else
-											MIi->print(errs());
-									}
-								}
-								else // STP
-								{
-									if (MIi->getOperand(0).getReg() == MIi->getOperand(2).getReg() ||
-											zomtagUtils->getCorrespondingReg(MIi->getOperand(2).getReg()) == MIi->getOperand(0).getReg() ||
-											MIi->getOperand(1).getReg() == MIi->getOperand(2).getReg() ||
-											zomtagUtils->getCorrespondingReg(MIi->getOperand(2).getReg()) == MIi->getOperand(1).getReg())
-										BuildMI(MBB, MIi, DL, TII->get(AArch64::LDARB), AArch64::XZR).addReg(AArch64::X15).addImm(0);
-									else
-										BuildMI(MBB, MIi, DL, TII->get(AArch64::LDARB), AArch64::XZR).addReg(AArch64::X15).addImm(0);
-								}
-							}
-
-							if (!(zomtagUtils->isPrePostIndexed(*MIi)) &&
-									(zomtagUtils->isQReg(MIi->getOperand(0).getReg())))
-							{
-								if (!(zomtagUtils->isStorePair(*MIi)))
-								{
-									BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), AArch64::X15)
-													.addReg(AArch64::X15)
-													.addReg(MIi->getOperand(1).getReg())
-													.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
-									BuildMI(MBB, MIi, DL, TII->get(AArch64::LDRQui), AArch64::XZR).addReg(AArch64::X15).addImm(0);
-								}
-							}
-
-/*
-							if ((zomtagUtils->isPrePostIndexed(*MIi)) &&
-									!(zomtagUtils->isQReg(MIi->getOperand(0).getReg())))
-							{
-									MIi->print(errs());
-									errs() << "\n";
-									MIi->getOperand(0).print(errs());
-									errs() << "\n";
-									MIi->getOperand(1).print(errs());
-									errs() << "\n";
-							}
-*/
-						}
-					}
-				}
-			}
-
 			if (option_tl_nop || option_tl_imp1 ||
 					option_tl_pre || option_tl_imp2)
 				instrumentTagLoading(MBB, MIi);
@@ -481,47 +171,34 @@ void TestZomTag::instrumentTagLoading(MachineBasicBlock &MBB, MachineBasicBlock:
 						.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
 				BuildMI(MBB, MIi, DL, TII->get(AArch64::HINT)).addImm(0);
 			}
+
 			if (option_tl_imp1)
 			{
 				if (!option_tl_sparc)
-				{
 					BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
 							.addReg(x15)
 							.addReg(mem)
 							.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
-					BuildMI(MBB, MIi, DL, TII->get(AArch64::LDRBBui), xzr)
-						.addReg(x15)
-						.addImm(0);
-				}
+				
 				if (option_tl_sparc)
-				{
 					BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
 							.addReg(x15)
 							.addReg(mem)
-							.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
+							.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 7));
+				
 					BuildMI(MBB, MIi, DL, TII->get(AArch64::LDRBBui), xzr)
 						.addReg(x15)
 						.addImm(0);
-				}
-/*
-				BuildMI(MBB, MIi, DL, TII->get(AArch64::LDRBBui), xzr)
-						.addReg(x15)
-						.addImm(0);
-*/
 			}
+
 			if (option_tl_imp2)
 			{
-/*
-				BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
-						.addReg(x15)
-						.addReg(xzr)
-						.addImm(0);
-*/
 				if (!option_tl_sparc)
 					BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
 							.addReg(x15)
 							.addReg(xzr)
 							.addImm(0);
+				
 				if (option_tl_sparc)				
 					BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
 							.addReg(x15)
@@ -532,15 +209,11 @@ void TestZomTag::instrumentTagLoading(MachineBasicBlock &MBB, MachineBasicBlock:
 						.addReg(x15)
 						.addImm(0);
 			}
+
 			if (option_tl_pre)
 			{
 				assert(mem.isReg());
-/*
-				BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
-					.addReg(x15)
-					.addReg(mem)
-					.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
-*/
+				
 				if (!option_tl_sparc)
 					BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
 							.addReg(x15)
