@@ -50,15 +50,6 @@ static cl::opt<bool> option_tl_imp1("zometag-tl-imp1", cl::desc("Instrument tag 
 static cl::opt<bool> option_tl_imp2("zometag-tl-imp2", cl::desc("Instrument tag loading ovh (imp2)"));
 static cl::opt<bool> option_tl_sparc("zometag-tl-sparc", cl::desc("Instrument tag loading ovh (sparc)"));
 
-static cl::opt<bool> option_imprecise1("zometag-imprecise1",
-		cl::desc("Instrument imprecise tag loading 1"));
-static cl::opt<bool> option_imprecise2("zometag-imprecise2",
-		cl::desc("Instrument imprecise tag loading 2"));
-static cl::opt<bool> option_nop("zometag-nop",
-		cl::desc("Instrument nop tag loading"));
-static cl::opt<bool> option_precise("zometag-precise",
-		cl::desc("Instrument precise tag loading"));
-
 namespace llvm
 {
 	void initializeTestZomTagPass(PassRegistry &);
