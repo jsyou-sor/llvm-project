@@ -1,3 +1,3 @@
-[submodule "zometag-alloc/ref/LowFat"]
-	path = zometag-alloc/ref/LowFat
-	url = https://github.com/GJDuck/LowFat.git
+#[submodule "zometag-alloc/ref/LowFat"]
+	#path = zometag-alloc/ref/LowFat
+	#url = https://github.com/GJDuck/LowFat.git

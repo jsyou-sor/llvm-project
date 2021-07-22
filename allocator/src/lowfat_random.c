@@ -344,6 +344,8 @@ void LOWFAT_CONSTRUCTOR lowfat_init(void)
 #ifndef LOWFAT_DATA_ONLY
 
 		// Init tag memory (48bit VA)
+		fprintf(stderr, "\n[ZOMETAG]\tRandom region allocator\n");
+
 		for (size_t i = 1; i <= 2050; i++)
 		{
 			//void *tag_start = (0x100000000 * i) + (uint8_t *)lowfat_region(LOWFAT_NUM_REGIONS + 1);
@@ -361,9 +363,6 @@ void LOWFAT_CONSTRUCTOR lowfat_init(void)
 			if (tag_start != tag_ptr)
 				goto mmap_error;
 		}
-
-		void *test_ptr = 0x87bdffffffa0;
-		fprintf(stderr, "accessing test_ptr: %d\n", *(int *)test_ptr);
 
     // Init regions for lowfat_malloc()
     for (size_t i = 1; i <= LOWFAT_NUM_REGIONS; i++)

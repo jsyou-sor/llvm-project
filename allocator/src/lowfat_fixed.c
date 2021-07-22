@@ -344,7 +344,7 @@ void LOWFAT_CONSTRUCTOR lowfat_init(void)
 #ifndef LOWFAT_DATA_ONLY
 
 		// Init tag memory (48bit VA)
-		fprintf(stderr, "[ZOMETAG]\tTag memory implemented...!\n");
+		fprintf(stderr, "\n[ZOMETAG]\tFixed Zone Allocator\n");
 		for (size_t i = 1; i <= 2050; i++)
 		{
 			void *tag_start = (void *)0x7fbe00000000;	
@@ -384,8 +384,7 @@ void LOWFAT_CONSTRUCTOR lowfat_init(void)
     lowfat_malloc_inited = true;
 
 #if !defined(LOWFAT_STANDALONE) && !defined(LOWFAT_WINDOWS)
-
-    // Init regions for the stack
+// Init regions for the stack
 #ifndef LOWFAT_NO_MEMORY_ALIAS
     {
         int fd = lowfat_create_shm(LOWFAT_STACK_MEMORY_SIZE);

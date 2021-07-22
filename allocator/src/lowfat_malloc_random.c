@@ -118,64 +118,69 @@ static void *lowfat_fallback_malloc(size_t size)
  */
 extern bool lowfat_malloc_init(void)
 {
-    // init sizemeta
-  
-    for(sizeid_t idx=0;idx<LOWFAT_NUM_REGIONS;idx++){
-        sizeinfo_t sizeinfo = &SIZEMETA[idx];
-        if(!lowfat_mutex_init(&sizeinfo->mutex))
-            return false;
-    	sizeinfo->freelist = 0; // NULL_REGION
+	// init sizemeta  
+	for(sizeid_t idx=0;idx<LOWFAT_NUM_REGIONS;idx++)
+	{
+		sizeinfo_t sizeinfo = &SIZEMETA[idx];
+		
+		if(!lowfat_mutex_init(&sizeinfo->mutex))
+			return false;
+		
+		sizeinfo->freelist = 0; // NULL_REGION
 	
-        uint32_t roffset;           // Offset for ASLR
-        lowfat_rand(&roffset, sizeof(roffset));
-        roffset &= LOWFAT_HEAP_ASLR_MASK;
-	roffset &= 0b111111111000000;
+		uint32_t roffset;           // Offset for ASLR
+		lowfat_rand(&roffset, sizeof(roffset));
+		roffset &= LOWFAT_HEAP_ASLR_MASK;
+		roffset &= 0b111111111000000;
+	
+		lowfat_regioninfo_t info = LOWFAT_REGION_INFO + idx +1;
+		info->offset =roffset;
 
-	lowfat_regioninfo_t info = LOWFAT_REGION_INFO + idx +1;
-        info->offset =roffset;
+	}
 
-    }
-    if(!lowfat_mutex_init(&regionmutex))
-        return false;
-    freeregion = 1;
-    // init sizemeta end
-    return true;
+	if(!lowfat_mutex_init(&regionmutex))
+		return false;
+	freeregion = 1;
+	
+	// init sizemeta end
+	
+	return true;
 }
 
-static bool zomtag_malloc_init_region(regionid_t idx){
-        uint8_t *heapptr = (uint8_t *)lowfat_region(idx) +
-            LOWFAT_HEAP_MEMORY_OFFSET;
+static bool zomtag_malloc_init_region(regionid_t idx)
+{
+	uint8_t *heapptr = (uint8_t *)lowfat_region(idx) + LOWFAT_HEAP_MEMORY_OFFSET;
 
-        /* uint32_t roffset;           // Offset for ASLR */
-        /* lowfat_rand(&roffset, sizeof(roffset)); */
+  /* 
+	uint32_t roffset;           // Offset for ASLR
+  
+	lowfat_rand(&roffset, sizeof(roffset));
+	roffset &= LOWFAT_HEAP_ASLR_MASK;
+	uint8_t *startptr = (uint8_t *)lowfat_base(heapptr + roffset + lowfat_size(heapptr) + LOWFAT_PAGE_SIZE); */
 
-        /* roffset &= LOWFAT_HEAP_ASLR_MASK; */
-        /* uint8_t *startptr = */
-        /*     (uint8_t *)lowfat_base(heapptr + roffset + lowfat_size(heapptr) + */
-        /*         LOWFAT_PAGE_SIZE); */
+	//uint8_t *startptr = (uint8_t *)lowfat_base(heapptr + lowfat_size(heapptr) + LOWFAT_PAGE_SIZE);
 
-	
-        uint8_t *startptr =
-           (uint8_t *)lowfat_base(heapptr + lowfat_size(heapptr) + LOWFAT_PAGE_SIZE);
+	lowfat_regioninfo_t info = LOWFAT_REGION_INFO + idx;
+	if (!lowfat_mutex_init(&info->mutex))
+		return false;
 
-	
-        lowfat_regioninfo_t info = LOWFAT_REGION_INFO + idx;
-        if (!lowfat_mutex_init(&info->mutex))
-            return false;
-        info->freelist  = NULL;
-        info->freeptr   = (uint8_t*)lowfat_base(startptr+info->offset);
-        info->endptr    = heapptr + LOWFAT_HEAP_MEMORY_SIZE;
-        info->accessptr = LOWFAT_PAGES_BASE(startptr);
+	uint8_t *startptr = (uint8_t *)lowfat_base(heapptr + info->offset + lowfat_size(heapptr) + LOWFAT_PAGE_SIZE);
+        
+	info->freelist  = NULL;
+	//info->freeptr   = (uint8_t*)lowfat_base(startptr+info->offset);
+	info->freeptr		= startptr;
+	info->endptr    = heapptr + LOWFAT_HEAP_MEMORY_SIZE;
+	info->accessptr = LOWFAT_PAGES_BASE(startptr);
 
-        if(!lowfat_mutex_init(&info->linkmutex))
-            return false;
-        //info->allocsizeid = NUM_SIZES; // assume to be already assigned
+	if(!lowfat_mutex_init(&info->linkmutex))
+		return false;
+	//info->allocsizeid = NUM_SIZES; // assume to be already assigned
 	info->alloccount = ALLOC_PER_REGION; // can be smaller
 	info->samesizenext = 0; // NULL_REGION
 
 #ifdef LOWFAT_NO_PROTECT
-        // In "no protect" mode, make entire heap region accessible
-        lowfat_protect(heapptr, LOWFAT_HEAP_MEMORY_SIZE, true, true);
+// In "no protect" mode, make entire heap region accessible
+	lowfat_protect(heapptr, LOWFAT_HEAP_MEMORY_SIZE, true, true);
 #endif      /* LOWFAT_NO_PROTECT */
 
 	return true;

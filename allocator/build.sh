@@ -94,7 +94,7 @@ cp -f src/${MALLOC} ./lowfat_malloc.c
 echo -e "${GREEN}$0${OFF}: creating liblowfat.preload.so standalone..."
 $CLANG -D_GNU_SOURCE -DLOWFAT_STANDALONE -DLOWFAT_NO_PROTECT -fPIC -shared \
 	-o ${OUT} -std=gnu99 -m64 "-I./" \
-	-DLOWFAT_LINUX -O2 "./lowfat.c"
+	-DLOWFAT_LINUX -DLOWFAT_NO_THREADS -O2 "./lowfat.c"
 
 echo -e "${GREEN}$0${OFF}: clean up..."
 (rm lowfat.c lowfat_malloc.c lowfat_config.h lowfat_config.c)
