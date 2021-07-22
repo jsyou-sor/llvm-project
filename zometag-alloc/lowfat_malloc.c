@@ -29,7 +29,6 @@ extern void *__libc_malloc(size_t size);
 extern void *__libc_realloc(void *ptr, size_t size);
 extern void __libc_free(void *ptr);
 
-// size entry LKR
 
 typedef size_t regionid_t;
 typedef size_t sizeid_t;
@@ -65,6 +64,7 @@ struct lowfat_regioninfo_s
     void *freeptr;
     void *endptr;
     void *accessptr;
+    uint32_t offset;
 
     //assigned size
     lowfat_mutex_t linkmutex;
@@ -83,152 +83,6 @@ LOWFAT_DATA struct lowfat_regioninfo_s LOWFAT_REGION_INFO[LOWFAT_NUM_REGIONS+1];
 /*
  * Return the sizeid of the object pointed to by `_ptr`
  */
-#ifdef ZOMTAG
-
-#define TEST_NUM_REGIONS        25
-#define TEST_MAX_REGIONS        32768                     // 2^15
-#define TEST_PAGE_SIZE          4096
-#define TEST_MAX_ADDRESS        0x1000000000000ull        // 48bit
-#define TEST_REGION_SIZE        0x100000000ull            // 4G
-#define TEST_HEAP_MEMORY_OFFSET 0
-#define TEST_HEAP_MEMORY_SIZE   2147483648                // 2G
-
-#define DEBUG                   1
-#define TEST(s)                 printf("[TEST]\t%s\n", s);
-
-//static bool test_malloc_inited = false;
-unsigned long TEST_SIZES[TEST_MAX_REGIONS + 1];
-
-struct test_freelist_s
-{
-  uintptr_t _reserved;
-  struct test_freelist_s *next;
-};
-typedef struct test_freelist_s *test_freelist_t;
-
-struct test_regioninfo_s
-{
-  //test_mutex_t mutex;       // disregard multithreading for now
-  test_freelist_t freelist;
-  void *freeptr;
-  void *endptr;
-  void *accessptr;
-
-  // Additional elements
-  bool    in_use;
-  bool    is_mapped;
-  int     obj_cnt;                      // number of objects in the region (<= 16)
-  struct  test_regioninfo_s *next;      // pointer to next region with same object size
-  struct  test_regioninfo_s *priv;      // pointer to prev region with same object size
-};
-typedef struct test_regioninfo_s *test_regioninfo_t;
-
-struct test_regioninfo_s TEST_REGION_INFO[TEST_MAX_REGIONS + 1];
-
-void test_init_sizes()
-{
-  TEST_SIZES[1] = 16; TEST_SIZES[2] = 32; TEST_SIZES[3] = 64; TEST_SIZES[4] = 128; TEST_SIZES[5] = 256; 
-  TEST_SIZES[6] = 512; TEST_SIZES[7] = 1024; TEST_SIZES[8] = 2048; TEST_SIZES[9] = 4096; TEST_SIZES[10] = 8192;
-  TEST_SIZES[11] = 16384; TEST_SIZES[12] = 32768; TEST_SIZES[13] = 65536; TEST_SIZES[14] = 131072; TEST_SIZES[15] = 262144;
-  TEST_SIZES[16] = 524288; TEST_SIZES[17] = 1048576; TEST_SIZES[18] = 2097152; TEST_SIZES[19] = 4194304; TEST_SIZES[20]= 8388608;
-  TEST_SIZES[21] = 16777216; TEST_SIZES[22] = 33554432; TEST_SIZES[23] = 67108864;
-  TEST_SIZES[24] = 1342217728; TEST_SIZES[25] = 268435456;
-  //TEST_SIZES[24] = 1040; TEST_SIZES[25] = 1280;
-  //TEST_SIZES[26] = 1536; TEST_SIZES[27] = 1792; TEST_SIZES[28] = 2048; TEST_SIZES[29] = 2064; TEST_SIZES[30] = 2560;
-  //TEST_SIZES[31] = 3072; TEST_SIZES[32] = 3584; TEST_SIZES[33] = 4096; TEST_SIZES[34] = 4112; TEST_SIZES[35] = 5120;
-  //TEST_SIZES[36] = 6144; TEST_SIZES[37] = 7168; TEST_SIZES[38] = 8192; TEST_SIZES[39] = 8208; TEST_SIZES[40] = 10240;
-  //TEST_SIZES[41] = 12288; TEST_SIZES[42] = 16384; TEST_SIZES[43] = 32768; TEST_SIZES[44] = 65536; TEST_SIZES[45] = 131072;
-  //TEST_SIZES[46] = 262144; TEST_SIZES[47] = 524288; TEST_SIZES[48] = 1048576; TEST_SIZES[49] = 2097152; TEST_SIZES[50] = 4194304;
-  //TEST_SIZES[51] = 8388608; TEST_SIZES[52] = 16777216; TEST_SIZES[53] = 33554432; TEST_SIZES[54] = 67108864; // 4G/16
-}
-
-static void *test_region(size_t idx)
-{
-  return (void *)(idx * TEST_REGION_SIZE);
-}
-
-bool test_malloc_init(void)
-{
-  for (size_t i = 0; i < TEST_NUM_REGIONS; i++)
-  {
-    int prot = PROT_NONE;
-
-    size_t idx = i + 1;
-    uint8_t *heapptr = (uint8_t *)test_region(idx) + TEST_HEAP_MEMORY_OFFSET;
-    uint8_t *startptr = heapptr;
-    test_regioninfo_t info = TEST_REGION_INFO + idx;
-
-    // if (!test_mutex_init(&info->mutex))
-      // return false;
-
-    info->freelist = NULL;
-    info->freeptr = startptr;
-    info->endptr = heapptr + TEST_HEAP_MEMORY_SIZE;
-    //info->accessptr = TEST_PAGES_BASE(startptr);
-    info->accessptr = ((void *)((uint8_t *)(startptr) - ((uintptr_t)(startptr) %
-        TEST_PAGE_SIZE)));
-    info->obj_cnt = 0;
-    info->next = NULL;
-    info->priv = NULL;
-    info->in_use = true;
-    info->is_mapped = true;
-
-    // #ifdef TEST_NO_PROTECT
-    prot |= PROT_READ | PROT_WRITE;
-    if (mprotect(heapptr, TEST_HEAP_MEMORY_SIZE, prot) < 0)
-        printf("[TEST]\tfailed to mprotect: %s", strerror(errno));
-  
-  }
-
-  for (size_t i = TEST_NUM_REGIONS; i < TEST_MAX_REGIONS; i++)
-  {
-    size_t idx = i + 1;
-    test_regioninfo_t info = TEST_REGION_INFO + idx;
-    info->in_use = false;
-    info->is_mapped = false;
-  }
-
-  return true;
-}
-
-static test_regioninfo_t test_map_region(int index, int size)
-{
-  int prot = PROT_NONE;
-  int flags = MAP_NORESERVE | MAP_ANONYMOUS | MAP_PRIVATE;
-  uint8_t *heapptr = (uint8_t *)test_region(index) + TEST_HEAP_MEMORY_OFFSET;
-  uint8_t *startptr = heapptr;
-  test_regioninfo_t info = TEST_REGION_INFO + index;
-
-  // fill in test_regioninfo_t
-  info->freelist = NULL;
-  info->freeptr = startptr;
-  info->endptr = heapptr + TEST_HEAP_MEMORY_SIZE;
-  info->obj_cnt = 0;
-  info->next = NULL;
-  info->priv = NULL;
-
-  // mmap new region
-  if (info->is_mapped == 0)
-  {
-    void *ptr = mmap(heapptr, TEST_HEAP_MEMORY_SIZE, prot, flags, -1, 0);
-    if (ptr != heapptr)
-      printf("[TEST]\tfailed to mmap memory: %s", strerror(errno));
-
-    prot |= PROT_READ | PROT_WRITE;
-    if (mprotect(heapptr, TEST_HEAP_MEMORY_SIZE, prot) < 0)
-      printf("[TEST]\tfailed to mprotect: %s", strerror(errno));
-  
-    info->is_mapped = true;
-  }
-
-  // update TEST_SIZES
-  TEST_SIZES[index] = size;
-
-  return info;
-}
-
-
-#endif
 
 _LOWFAT_CONST /*_LOWFAT_INLINE*/ size_t lowfat_sizeid(const void * _ptr){
     regionid_t regionid = lowfat_index(_ptr);
@@ -265,11 +119,21 @@ static void *lowfat_fallback_malloc(size_t size)
 extern bool lowfat_malloc_init(void)
 {
     // init sizemeta
+  
     for(sizeid_t idx=0;idx<LOWFAT_NUM_REGIONS;idx++){
         sizeinfo_t sizeinfo = &SIZEMETA[idx];
         if(!lowfat_mutex_init(&sizeinfo->mutex))
             return false;
     	sizeinfo->freelist = 0; // NULL_REGION
+	
+        uint32_t roffset;           // Offset for ASLR
+        lowfat_rand(&roffset, sizeof(roffset));
+        roffset &= LOWFAT_HEAP_ASLR_MASK;
+	roffset &= 0b111111111000000;
+
+	lowfat_regioninfo_t info = LOWFAT_REGION_INFO + idx +1;
+        info->offset =roffset;
+
     }
     if(!lowfat_mutex_init(&regionmutex))
         return false;
@@ -282,20 +146,24 @@ static bool zomtag_malloc_init_region(regionid_t idx){
         uint8_t *heapptr = (uint8_t *)lowfat_region(idx) +
             LOWFAT_HEAP_MEMORY_OFFSET;
 
-        uint32_t roffset;           // Offset for ASLR
-        lowfat_rand(&roffset, sizeof(roffset));
-        roffset &= LOWFAT_HEAP_ASLR_MASK;
-        uint8_t *startptr =
-            (uint8_t *)lowfat_base(heapptr + roffset + lowfat_size(heapptr) +
-                LOWFAT_PAGE_SIZE);
+        /* uint32_t roffset;           // Offset for ASLR */
+        /* lowfat_rand(&roffset, sizeof(roffset)); */
 
-        //uint8_t *startptr =
-        //    (uint8_t *)lowfat_base(heapptr + lowfat_size(heapptr) + LOWFAT_PAGE_SIZE);
+        /* roffset &= LOWFAT_HEAP_ASLR_MASK; */
+        /* uint8_t *startptr = */
+        /*     (uint8_t *)lowfat_base(heapptr + roffset + lowfat_size(heapptr) + */
+        /*         LOWFAT_PAGE_SIZE); */
+
+	
+        uint8_t *startptr =
+           (uint8_t *)lowfat_base(heapptr + lowfat_size(heapptr) + LOWFAT_PAGE_SIZE);
+
+	
         lowfat_regioninfo_t info = LOWFAT_REGION_INFO + idx;
         if (!lowfat_mutex_init(&info->mutex))
             return false;
         info->freelist  = NULL;
-        info->freeptr   = startptr;
+        info->freeptr   = (uint8_t*)lowfat_base(startptr+info->offset);
         info->endptr    = heapptr + LOWFAT_HEAP_MEMORY_SIZE;
         info->accessptr = LOWFAT_PAGES_BASE(startptr);
 
@@ -319,87 +187,6 @@ static bool zomtag_malloc_init_region(regionid_t idx){
 extern void *lowfat_malloc_index(size_t idx, size_t size);
 extern void *lowfat_malloc(size_t size)
 {
-#ifdef ZOMTAG
-
-  void *ptr; int idx; size_t alloc_size;
-  
-  // Search for proper allocation size
-  // Can be optimized
-  for (int i = 1; i <= TEST_NUM_REGIONS; i++)
-    {
-      if (TEST_SIZES[i] >= size)
-        {
-          idx = i;
-          alloc_size = TEST_SIZES[i];
-          break;
-        }
-    }
-  test_regioninfo_t info = TEST_REGION_INFO + idx;
-  //printf("[TEST]\tmalloc region index: %d\n", idx);
-
-  // (1) First, attempt to allocate from freelist.
-  for(;;)
-    {
-      if (info->freelist != NULL)
-        {
-          if (DEBUG) TEST("allocated from freelist");
-          test_freelist_t freelist = info->freelist;
-          info->freelist = freelist->next;
-          ptr = (void *)freelist;
-          info->obj_cnt += 1;
-          return ptr;
-        }
-
-      if (info->next == NULL)
-        break;
-    
-      info = info->next;
-    }
-  idx = (uintptr_t)info->endptr / TEST_REGION_SIZE;
-
-  // (2) Next, attempt to allocated from fresh space.
-  ptr = info->freeptr;
-  void *freeptr = (uint8_t *)ptr + size;
-  if (info->obj_cnt == 16)
-    {
-      // region doesn't have enough space or
-      // is full with 16 objects.
-      // allocate object to the next unused region
-
-      int index;
-      // find unused (even if it's mapped already) region
-      for (size_t i = TEST_NUM_REGIONS + 1; i <= TEST_MAX_REGIONS; i++)
-        {
-          if ((TEST_REGION_INFO+i)->in_use == 0)
-            {
-              index = i;
-              break;
-            }
-        }
-
-      if (DEBUG)
-        printf("[TEST]\tmapping new region: index = %d\n", index);
-
-      test_regioninfo_t new_region = test_map_region(index, alloc_size);
-      info->next = new_region;
-      new_region->priv = info;
-      info = new_region;
-
-      ptr = info->freeptr;
-      freeptr = (uint8_t *)ptr + size;
-      info->obj_cnt += 1;
-      info->freeptr = freeptr;
-      info->in_use = true;
-      return ptr;
-    }
-
-  info->freeptr = freeptr;
-  info->obj_cnt += 1;
-  return ptr;
-
-#else
-    //LKR future: lowfat_heap_select -> lowfat_size_select
-    //lowfat_heap_select -> sizeid_select
     sizeid_t sizeid = lowfat_heap_select(size);
     if(sizeid == 0){
         return lowfat_fallback_malloc(size);
@@ -430,9 +217,11 @@ extern void *lowfat_malloc(size_t size)
 
         info = &LOWFAT_REGION_INFO[regionid];
 
+	
         info->samesizenext = 0; // NULL_REGION
         info->allocsizeid = sizeid;
         zomtag_malloc_init_region(regionid);
+    
         lowfat_mutex_lock(&info->linkmutex);
         sizeinfo->freelist = regionid;
     }
@@ -483,8 +272,6 @@ extern void *lowfat_malloc(size_t size)
 		}
 
 		return ptr;
-    //LKR end
-#endif
 }
 extern void *lowfat_malloc_index(size_t /* regionid_t */ idx, size_t size)
 {
@@ -573,54 +360,6 @@ extern void *lowfat_malloc_index(size_t /* regionid_t */ idx, size_t size)
 extern void lowfat_free(void *ptr)
 {
 
-#ifdef ZOMTAG
-    if (ptr == NULL)
-    return;
-  //if (!test_is_ptr(ptr))
-  //{
-    // If 'ptr' is not low-fat, then it is assumed to from a legacy
-    // malloc() allocation
-    // test_fallback_free(ptr);
-    //return;
-  //}
-
-  // It is possible that 'ptr' does not point to the object's base
-  // (for memalign() type allocations)
-  int index = (uintptr_t)ptr / TEST_REGION_SIZE;
-  printf("[TEST]\tregion index of freeing object: %d\n", index);
-
-  size_t alloc_size = TEST_SIZES[index];
-  void *ptr_aligned = (void *)((uintptr_t)ptr - (uintptr_t)ptr % alloc_size);
-
-  if (DEBUG)
-    printf("[TEST]\tfreeing object: ptr = %p, ptr_aligned = %p\n", ptr, ptr_aligned);
-
-  //if (alloc_size > LOWFAT_BIG_OBJECT { ... }
-
-  test_regioninfo_t info = TEST_REGION_INFO + index;
-
-  info->obj_cnt -= 1;
-  if (info->obj_cnt == 0)
-  {
-    // If freeing an object results an empty region,
-    // re-initialize the region
-    info->in_use = false;
-    info->freelist = NULL;
-    info->freeptr = (uint8_t *)test_region(index) + TEST_HEAP_MEMORY_OFFSET; 
-    info->priv->next = NULL;
-    
-    TEST_SIZES[index] = 0;
-  }
-  else
-  {
-    //if (DEBUG) TEST("adding to freelist");
-    test_freelist_t newfreelist = (test_freelist_t)ptr_aligned;
-    test_freelist_t oldfreelist = info->freelist;
-    newfreelist->next = oldfreelist;
-    info->freelist = newfreelist;
-  }
-
-#else
     if (ptr == NULL)    // free(NULL) is a NOP.
         return;
     DEBUG(stderr, "lowfat_free receive free request ptr %p\n", ptr);
@@ -691,7 +430,6 @@ extern void lowfat_free(void *ptr)
     info->alloccount++;
     lowfat_mutex_unlock(&info->linkmutex);
     lowfat_mutex_unlock(&sizeinfo->mutex);
-#endif
 }
 
 /*
@@ -737,41 +475,6 @@ extern char *__strndup(const char *str, size_t n)
  */
 extern void *lowfat_realloc(void *ptr, size_t size)
 {
-#ifdef ZOMTAG
-
-  if (ptr == NULL || size == 0)
-    return NULL;
-
-  // (2) 'ptr' and 'size' map to the same region
-  int index = (uintptr_t)ptr / TEST_REGION_SIZE;
-  size_t index_size = TEST_SIZES[index];
-  size_t alloc_size;
-  for (int i = 1; i <= TEST_NUM_REGIONS; i++)
-  {
-    if (TEST_SIZES[i] >= size)
-    {
-      alloc_size = TEST_SIZES[i];
-      break;
-    }
-  }
-  if (index_size == alloc_size)
-    return ptr;
-
-  // (3) Do the reallocation + copy
-  // if (!lowfat_is_ptr(ptr)) fallback(ptr)
-
-  void *newptr = lowfat_malloc(size);
-  if (newptr == NULL) return NULL;
-  size_t cpy_size;
-  if (alloc_size > index_size) cpy_size = index_size;
-  else cpy_size = alloc_size;
-
-  memcpy(newptr, ptr, cpy_size);
-  lowfat_free(ptr);
-
-  return newptr;
-
-#else
     // (1) Check for cheap exits:
     if (ptr == NULL || size == 0)
         return lowfat_malloc(size);
@@ -821,7 +524,6 @@ extern void *lowfat_realloc(void *ptr, size_t size)
     lowfat_free(ptr);
 
     return newptr;
-#endif
 }
 
 /*

@@ -70,6 +70,7 @@ namespace
       bool runOnMachineFunction(MachineFunction &F) override;
 			void instrumentTagLoading(MachineBasicBlock &MBB, MachineBasicBlock::instr_iterator &MIi);
 			void instrumentZoneIsolation(MachineBasicBlock &MBB, MachineBasicBlock::instr_iterator &MIi);
+			void instrumentSFIKE(MachineBasicBlock &MBB, MachineBasicBlock::instr_iterator &MIi);
 
     private:
       const TargetMachine *TM = nullptr;
@@ -116,14 +117,55 @@ bool TestZomTag::runOnMachineFunction(MachineFunction &MF)
 
 			if (option_default)
 				instrumentZoneIsolation(MBB, MIi);
+
+			//instrumentSFIKE(MBB, MIi);
     }
   }
   return true;
 }
 
+void TestZomTag::instrumentSFIKE(MachineBasicBlock &MBB, MachineBasicBlock::instr_iterator &MIi)
+{
+	unsigned dst;
+	unsigned mem;
+	const auto &DL = MIi->getDebugLoc();
+
+	if (zomtagUtils->isPrePostIndexed(*MIi))
+		return;
+
+	if (MIi->getNumOperands() > 4)
+		return;
+
+	if (zomtagUtils->isLoad(*MIi) || zomtagUtils->isStore(*MIi))
+	{
+		dst = MIi->getOperand(0).getReg();
+		mem = MIi->getOperand(1).getReg();
+		if (zomtagUtils->isLoadPair(*MIi) ||
+				zomtagUtils->isStorePair(*MIi))
+			mem = MIi->getOperand(2).getReg();
+
+		if (mem != AArch64::SP && mem != AArch64::FP)
+		{
+			BuildMI(MBB, MIi, DL, TII->get(AArch64::LDRXui), xzr).addReg(x15).addImm(0);
+			BuildMI(MBB, MIi, DL, TII->get(AArch64::BFMXri), x15).addReg(x15).addReg(mem).addImm(0).addImm(55);
+			BuildMI(MBB, MIi, DL, TII->get(AArch64::LDARB), AArch64::WZR).addReg(x15).addImm(0);
+		}
+	}
+	
+	if (zomtagUtils->isBranch(*MIi) || MIi->getOpcode() == AArch64::RET)
+	{
+		if (!MIi->getOperand(0).isReg())
+			return;
+		
+		mem = MIi->getOperand(0).getReg();
+		BuildMI(MBB, MIi, DL, TII->get(AArch64::BFMXri), x15).addReg(x15).addReg(mem).addImm(0).addImm(55);
+		BuildMI(MBB, MIi, DL, TII->get(AArch64::LDRXui), xzr).addReg(mem).addImm(0);
+	}	
+	return;
+}
+
 void TestZomTag::instrumentTagLoading(MachineBasicBlock &MBB, MachineBasicBlock::instr_iterator &MIi)
 {
-
 	unsigned dst;
 	unsigned mem;
 	const auto &DL = MIi->getDebugLoc();
@@ -260,11 +302,13 @@ void TestZomTag::instrumentZoneIsolation(MachineBasicBlock &MBB, MachineBasicBlo
 		auto op_src = MIi->getOperand(MIi->getNumOperands() - 1);
 		if (op_src.isMetadata())
 		{
+			const auto &DL = MIi->getDebugLoc();
+			BuildMI(MBB, MIi, DL, TII->get(AArch64::HINT)).addImm(0);
+/*
 			const unsigned ptr_reg = MIi->getOperand(1).getReg();
 			const MCInstrDesc &II = TII->get(AArch64::ANDSXri);							// ANDSXri
 			const auto &DL = MIi->getDebugLoc();
 			int64_t imm = 0x100000000;
-/*	
 			auto tmp = MIi + 1;	
 	
 			MIi->print(errs());

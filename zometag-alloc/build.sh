@@ -42,5 +42,5 @@ cd ${LOWFAT_SRC}/config
 echo -e "${GREEN}$0${OFF}: creating liblowfat.preload.so standalone..."
 cd /home/odroid/zomtag-llvm/zometag-alloc
 $CLANG -D_GNU_SOURCE -DLOWFAT_STANDALONE -DLOWFAT_NO_PROTECT -fPIC -shared \
-	-o liblowfat.preload.so -std=gnu99 -m64 "-I./" \
+	-o libzometag.preload.so -std=gnu99 -m64 "-I./" \
 	-DLOWFAT_LINUX -O2 "./lowfat.c"

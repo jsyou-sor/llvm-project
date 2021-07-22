@@ -1,0 +1,133 @@
+_|                                      _|_|_|_|            _|
+_|          _|_|    _|      _|      _|  _|        _|_|_|  _|_|_|_|
+_|        _|    _|  _|      _|      _|  _|_|_|  _|    _|    _|
+_|        _|    _|    _|  _|  _|  _|    _|      _|    _|    _|
+_|_|_|_|    _|_|        _|      _|      _|        _|_|_|      _|_|
+
+Parsing "sizes.cfg"...
+IsPow2=false
+Region #1: size=16 magic=0x1000000000000001
+Region #2: size=32 magic=0x0800000000000001
+Region #3: size=48 magic=0x0555555555555556
+Region #4: size=64 magic=0x0400000000000001
+Region #5: size=80 magic=0x0333333333333334
+Region #6: size=96 magic=0x02AAAAAAAAAAAAAB
+Region #7: size=112 magic=0x024924924924924A
+Region #8: size=128 magic=0x0200000000000001
+Region #9: size=144 magic=0x01C71C71C71C71C8
+Region #10: size=160 magic=0x019999999999999A
+Region #11: size=192 magic=0x0155555555555556
+Region #12: size=224 magic=0x0124924924924925
+Region #13: size=256 magic=0x0100000000000001
+Region #14: size=272 magic=0x00F0F0F0F0F0F0F1
+Region #15: size=320 magic=0x00CCCCCCCCCCCCCD
+Region #16: size=384 magic=0x00AAAAAAAAAAAAAB
+Region #17: size=448 magic=0x0092492492492493
+Region #18: size=512 magic=0x0080000000000001
+Region #19: size=528 magic=0x007C1F07C1F07C20
+Region #20: size=640 magic=0x0066666666666667
+Region #21: size=768 magic=0x0055555555555556
+Region #22: size=896 magic=0x004924924924924A
+Region #23: size=1024 magic=0x0040000000000001
+Region #24: size=1040 magic=0x003F03F03F03F040
+Region #25: size=1280 magic=0x0033333333333334
+Region #26: size=1536 magic=0x002AAAAAAAAAAAAB
+Region #27: size=1792 magic=0x0024924924924925
+Region #28: size=2048 magic=0x0020000000000001
+Region #29: size=2064 magic=0x001FC07F01FC07F1
+Region #30: size=2560 magic=0x001999999999999A
+Region #31: size=3072 magic=0x0015555555555556
+Region #32: size=3584 magic=0x0012492492492493
+Region #33: size=4096 magic=0x0010000000000001
+Region #34: size=4112 magic=0x000FF00FF00FF010
+Region #35: size=5120 magic=0x000CCCCCCCCCCCCD
+Region #36: size=6144 magic=0x000AAAAAAAAAAAAB
+Region #37: size=7168 magic=0x000924924924924A
+Region #38: size=8192 magic=0x0008000000000001
+Region #39: size=8208 magic=0x0007FC01FF007FC1
+Region #40: size=10240 magic=0x0006666666666667
+Region #41: size=12288 magic=0x0005555555555556
+Region #42: size=16384 magic=0x0004000000000001
+Region #43: size=32768 magic=0x0002000000000001
+Region #44: size=65536 magic=0x0001000000000001
+Region #45: size=131072 magic=0x0000800000000001
+Region #46: size=262144 magic=0x0000400000000001
+Region #47: size=524288 magic=0x0000200000000001
+Region #48: size=1048576 magic=0x0000100000000001
+Region #49: size=2097152 magic=0x0000080000000001
+Region #50: size=4194304 magic=0x0000040000000001
+Region #51: size=8388608 magic=0x0000020000000001
+Region #52: size=16777216 magic=0x0000010000000001
+Region #53: size=33554432 magic=0x0000008000000001
+Region #54: size=67108864 magic=0x0000004000000001
+Region #55: size=134217728 magic=0x0000002000000001
+Region #56: size=268435456 magic=0x0000001000000001
+Region #57: size=536870912 magic=0x0000000800000001
+Region #58: size=1073741824 magic=0x0000000400000001
+Region #59: size=2147483648 magic=0x0000000200000001
+Region #60: size=4294967296 magic=0x0000000100000001
+Region #61: size=8589934592 magic=0x0000000080000001
+Calculating errors (this may take some time)...
+Region #1: error=0B
+Region #2: error=0B
+Region #3: error=0B
+Region #4: error=0B
+Region #5: error=0B
+Region #6: error=0B
+Region #7: error=0B
+Region #8: error=0B
+Region #9: error=0B
+Region #10: error=0B
+Region #11: error=0B
+Region #12: error=0B
+Region #13: error=0B
+Region #14: error=0B
+Region #15: error=0B
+Region #16: error=0B
+Region #17: error=0B
+Region #18: error=0B
+Region #19: error=0B
+Region #20: error=0B
+Region #21: error=0B
+Region #22: error=0B
+Region #23: error=0B
+Region #24: error=0B
+Region #25: error=0B
+Region #26: error=0B
+Region #27: error=0B
+Region #28: error=0B
+Region #29: error=0B
+Region #30: error=0B
+Region #31: error=0B
+Region #32: error=0B
+Region #33: error=0B
+Region #34: error=0B
+Region #35: error=0B
+Region #36: error=0B
+Region #37: error=0B
+Region #38: error=0B
+Region #39: error=0B
+Region #40: error=0B
+Region #41: error=0B
+Region #42: error=0B
+Region #43: error=0B
+Region #44: error=0B
+Region #45: error=0B
+Region #46: error=0B
+Region #47: error=0B
+Region #48: error=0B
+Region #49: error=0B
+Region #50: error=0B
+Region #51: error=0B
+Region #52: error=1B
+Region #53: error=3B
+Region #54: error=6B
+Region #55: error=14B
+Region #56: error=28B
+Region #57: error=58B
+Region #58: error=118B
+Region #59: error=240B
+Region #60: error=488B
+Region #61: error=995B
+Generating "lowfat_config.c"...
+Done...

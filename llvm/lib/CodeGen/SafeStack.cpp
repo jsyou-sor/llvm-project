@@ -14,7 +14,6 @@
 // http://clang.llvm.org/docs/SafeStack.html
 //
 //===----------------------------------------------------------------------===//
-
 #include "SafeStackColoring.h"
 #include "SafeStackLayout.h"
 #include "llvm/ADT/Statistic.h"

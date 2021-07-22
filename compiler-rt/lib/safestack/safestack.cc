@@ -297,7 +297,7 @@ void __safestack_init() {
 
 	//printf("[SafeStack]\tEnter number of VA bits : ");
 	//scanf("%d", &VA_BITS);
-	printf("[SafeStack]\tVA_BITS: %d\n", VA_BITS);
+	//printf("[SafeStack]\tVA_BITS: %d\n", VA_BITS);
 
   // Allocate unsafe stack for main thread
 	//printf("Allocating 4G unsafe stack region\n");

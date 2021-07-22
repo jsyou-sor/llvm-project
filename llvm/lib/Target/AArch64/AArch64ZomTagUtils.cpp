@@ -8,6 +8,18 @@ ZomTagUtils::ZomTagUtils(const TargetRegisterInfo *TRI,
 {
 };
 
+bool ZomTagUtils::isBranch(const MachineInstr &MI)
+{
+	switch(MI.getOpcode())
+	{
+		default:
+			return false;
+		case AArch64::BLR:
+		case AArch64::BR:
+			return true;
+	}
+}
+
 bool ZomTagUtils::isAddSub(MachineInstr &MI)
 {
   switch(MI.getOpcode())

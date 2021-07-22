@@ -42,6 +42,7 @@ namespace llvm
 		unsigned getQReg(const unsigned XReg);
 		bool isQReg(const unsigned reg);
 		bool isLDRD(const MachineInstr &MI);
+		bool isBranch(const MachineInstr &MI);
   };
 }
 
