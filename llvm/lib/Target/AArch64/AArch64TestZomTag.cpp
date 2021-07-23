@@ -52,34 +52,34 @@ static cl::opt<bool> option_tl_sparc("zometag-tl-sparc", cl::desc("Instrument ta
 
 namespace llvm
 {
-	void initializeTestZomTagPass(PassRegistry &);
+  void initializeTestZomTagPass(PassRegistry &);
 }
 
 namespace
 {
   class TestZomTag : public MachineFunctionPass 
   {
-    public:
-      static char ID;
-      TestZomTag() : MachineFunctionPass(ID) {
-        initializeTestZomTagPass(*PassRegistry::getPassRegistry());    
-      }
-      StringRef getPassName() const override { return "zomtag-ptr"; }
+  public:
+    static char ID;
+    TestZomTag() : MachineFunctionPass(ID) {
+      initializeTestZomTagPass(*PassRegistry::getPassRegistry());    
+    }
+    StringRef getPassName() const override { return "zomtag-ptr"; }
 
-      bool doInitialization(Module &M) override;
-      bool runOnMachineFunction(MachineFunction &F) override;
-			void instrumentTagLoading(MachineBasicBlock &MBB, MachineBasicBlock::instr_iterator &MIi);
-			void instrumentZoneIsolation(MachineBasicBlock &MBB, MachineBasicBlock::instr_iterator &MIi);
+    bool doInitialization(Module &M) override;
+    bool runOnMachineFunction(MachineFunction &F) override;
+    void instrumentTagLoading(MachineBasicBlock &MBB, MachineBasicBlock::instr_iterator &MIi);
+    void instrumentZoneIsolation(MachineBasicBlock &MBB, MachineBasicBlock::instr_iterator &MIi);
 
-    private:
-      const TargetMachine *TM = nullptr;
-      const AArch64Subtarget *STI = nullptr;
-      const AArch64InstrInfo *TII = nullptr;
-      const AArch64RegisterInfo *TRI = nullptr;
+  private:
+    const TargetMachine *TM = nullptr;
+    const AArch64Subtarget *STI = nullptr;
+    const AArch64InstrInfo *TII = nullptr;
+    const AArch64RegisterInfo *TRI = nullptr;
 
-      ZomTagUtils_ptr zomtagUtils = nullptr;
+    ZomTagUtils_ptr zomtagUtils = nullptr;
 
-      //bool isAddSub(MachineInstr &MI);
+    //bool isAddSub(MachineInstr &MI);
   };
 } // end anonymous namespace
 
@@ -107,175 +107,175 @@ bool TestZomTag::runOnMachineFunction(MachineFunction &MF)
   zomtagUtils = ZomTagUtils::get(TRI, TII);
 
   for (auto &MBB : MF)
-  {
-    for (auto MIi = MBB.instr_begin(); MIi != MBB.instr_end(); MIi++)
     {
-			if (option_tl_nop || option_tl_imp1 ||
-					option_tl_pre || option_tl_imp2)
-				instrumentTagLoading(MBB, MIi);
+      for (auto MIi = MBB.instr_begin(); MIi != MBB.instr_end(); MIi++)
+        {
+          if (option_tl_nop || option_tl_imp1 ||
+              option_tl_pre || option_tl_imp2)
+            instrumentTagLoading(MBB, MIi);
 
-			if (option_default)
-				instrumentZoneIsolation(MBB, MIi);
+          if (option_default)
+            instrumentZoneIsolation(MBB, MIi);
+        }
     }
-  }
   return true;
 }
 
 void TestZomTag::instrumentTagLoading(MachineBasicBlock &MBB, MachineBasicBlock::instr_iterator &MIi)
 {
 
-	unsigned dst;
-	unsigned mem;
-	const auto &DL = MIi->getDebugLoc();
-	const unsigned imm = 0x7fbe;
+  unsigned dst;
+  unsigned mem;
+  const auto &DL = MIi->getDebugLoc();
+  const unsigned imm = 0x7fbe;
 
-	if (zomtagUtils->isPrePostIndexed(*MIi))
-		return;
+  if (zomtagUtils->isPrePostIndexed(*MIi))
+    return;
 
-	if (!(MIi->getOperand(0).isReg()) ||
-			!(MIi->getOperand(1).isReg()))
-		return;
+  if (!(MIi->getOperand(0).isReg()) ||
+      !(MIi->getOperand(1).isReg()))
+    return;
 
-	if (MIi->getNumOperands() > 4)
-		return;
+  if (MIi->getNumOperands() > 4)
+    return;
 
-	if (zomtagUtils->isLoad(*MIi) || zomtagUtils->isStore(*MIi))
-	{
-		dst = MIi->getOperand(0).getReg();
-		mem = MIi->getOperand(1).getReg();
-		if (zomtagUtils->isLoadPair(*MIi) ||
-				zomtagUtils->isStorePair(*MIi))
-			mem = MIi->getOperand(2).getReg();
+  if (zomtagUtils->isLoad(*MIi) || zomtagUtils->isStore(*MIi))
+    {
+      dst = MIi->getOperand(0).getReg();
+      mem = MIi->getOperand(1).getReg();
+      if (zomtagUtils->isLoadPair(*MIi) ||
+          zomtagUtils->isStorePair(*MIi))
+        mem = MIi->getOperand(2).getReg();
 
-		if (mem != AArch64::SP && mem != AArch64::FP)
-		{
-			// MOV X15, 0x7fbe, LSL, 32
-			BuildMI(MBB, MIi, DL, TII->get(AArch64::MOVZXi), x15)
-					.addImm(imm)
-					.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
+      if (mem != AArch64::SP && mem != AArch64::FP)
+        {
+          // MOV X15, 0x7fbe, LSL, 32
+          BuildMI(MBB, MIi, DL, TII->get(AArch64::MOVZXi), x15)
+            .addImm(imm)
+            .addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
 				
-			if (option_tl_nop)
-			{
-				BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
-						.addReg(x15)
-						.addReg(mem)
-						.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
-				BuildMI(MBB, MIi, DL, TII->get(AArch64::HINT)).addImm(0);
-			}
+          if (option_tl_nop)
+            {
+              BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
+                .addReg(x15)
+                .addReg(mem)
+                .addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
+              BuildMI(MBB, MIi, DL, TII->get(AArch64::HINT)).addImm(0);
+            }
 
-			if (option_tl_imp1)
-			{
-				if (!option_tl_sparc)
-					BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
-							.addReg(x15)
-							.addReg(mem)
-							.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
+          if (option_tl_imp1)
+            {
+              if (!option_tl_sparc)
+                BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
+                  .addReg(x15)
+                  .addReg(mem)
+                  .addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
 				
-				if (option_tl_sparc)
-					BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
-							.addReg(x15)
-							.addReg(mem)
-							.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 7));
+              if (option_tl_sparc)
+                BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
+                  .addReg(x15)
+                  .addReg(mem)
+                  .addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 7));
 				
-					BuildMI(MBB, MIi, DL, TII->get(AArch64::LDRBBui), xzr)
-						.addReg(x15)
-						.addImm(0);
-			}
+              BuildMI(MBB, MIi, DL, TII->get(AArch64::LDRBBui), xzr)
+                .addReg(x15)
+                .addImm(0);
+            }
 
-			if (option_tl_imp2)
-			{
-				if (!option_tl_sparc)
-					BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
-							.addReg(x15)
-							.addReg(xzr)
-							.addImm(0);
+          if (option_tl_imp2)
+            {
+              if (!option_tl_sparc)
+                BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
+                  .addReg(x15)
+                  .addReg(xzr)
+                  .addImm(0);
 				
-				if (option_tl_sparc)				
-					BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
-							.addReg(x15)
-							.addReg(xzr)
-							.addImm(0);
+              if (option_tl_sparc)				
+                BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
+                  .addReg(x15)
+                  .addReg(xzr)
+                  .addImm(0);
 
-				BuildMI(MBB, MIi, DL, TII->get(AArch64::LDRBBui), xzr)
-						.addReg(x15)
-						.addImm(0);
-			}
+              BuildMI(MBB, MIi, DL, TII->get(AArch64::LDRBBui), xzr)
+                .addReg(x15)
+                .addImm(0);
+            }
 
-			if (option_tl_pre)
-			{
-				assert(mem.isReg());
+          if (option_tl_pre)
+            {
+              assert(mem.isReg());
 				
-				if (!option_tl_sparc)
-					BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
-							.addReg(x15)
-							.addReg(mem)
-							.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
-				if (option_tl_sparc)				
-					BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
-							.addReg(x15)
-							.addReg(mem)
-							.addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 7));
+              if (!option_tl_sparc)
+                BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
+                  .addReg(x15)
+                  .addReg(mem)
+                  .addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 5));
+              if (option_tl_sparc)				
+                BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
+                  .addReg(x15)
+                  .addReg(mem)
+                  .addImm(AArch64_AM::getShifterImm(AArch64_AM::LSR, 7));
 
 
-				auto MIOpcode = zomtagUtils->isQReg(dst) ? AArch64::LDRQui : AArch64::LDARB;
+              auto MIOpcode = zomtagUtils->isQReg(dst) ? AArch64::LDRQui : AArch64::LDARB;
 
-				if ((dst == mem) ||
-						(dst == zomtagUtils->getCorrespondingReg(mem)) ||
-						(zomtagUtils->isStore(*MIi)))
-					BuildMI(MBB, MIi, DL, TII->get(MIOpcode), xzr)
-						.addReg(x15)
-						.addImm(0);
-				else
-					BuildMI(MBB, MIi, DL, TII->get(MIOpcode), dst)
-						.addReg(x15)
-						.addImm(0);
-			}
-		}
-	}
-	return;
+              if ((dst == mem) ||
+                  (dst == zomtagUtils->getCorrespondingReg(mem)) ||
+                  (zomtagUtils->isStore(*MIi)))
+                BuildMI(MBB, MIi, DL, TII->get(MIOpcode), xzr)
+                  .addReg(x15)
+                  .addImm(0);
+              else
+                BuildMI(MBB, MIi, DL, TII->get(MIOpcode), dst)
+                  .addReg(x15)
+                  .addImm(0);
+            }
+        }
+    }
+  return;
 }
 
 void TestZomTag::instrumentZoneIsolation(MachineBasicBlock &MBB, MachineBasicBlock::instr_iterator &MIi)
 {
-	if (zomtagUtils->isInterestingLoad(*MIi) || zomtagUtils->isInterestingStore(*MIi))
-	{
-		const auto &DL = MIi->getDebugLoc();
-		const auto op = zomtagUtils->getCorrespondingLoadStore(MIi->getOpcode());
-		const unsigned dst = MIi->getOperand(0).getReg();
-		const unsigned src = MIi->getOperand(1).getReg();
-		const unsigned off_x = MIi->getOperand(2).getReg();
-		const unsigned off_w = zomtagUtils->getCorrespondingReg(off_x);
-		const int64_t ext = AArch64_AM::SXTW;
-		const int64_t sft = MIi->getOperand(4).getImm();
+  if (zomtagUtils->isInterestingLoad(*MIi) || zomtagUtils->isInterestingStore(*MIi))
+    {
+      const auto &DL = MIi->getDebugLoc();
+      const auto op = zomtagUtils->getCorrespondingLoadStore(MIi->getOpcode());
+      const unsigned dst = MIi->getOperand(0).getReg();
+      const unsigned src = MIi->getOperand(1).getReg();
+      const unsigned off_x = MIi->getOperand(2).getReg();
+      const unsigned off_w = zomtagUtils->getCorrespondingReg(off_x);
+      const int64_t ext = AArch64_AM::SXTW;
+      const int64_t sft = MIi->getOperand(4).getImm();
 
-		BuildMI(MBB, MIi, DL, TII->get(op), dst).addReg(src).addReg(off_w).addImm(ext).addImm(sft);
+      BuildMI(MBB, MIi, DL, TII->get(op), dst).addReg(src).addReg(off_w).addImm(ext).addImm(sft);
 
-		auto tmp = MIi;
-		MIi--;
-		tmp->removeFromParent();
-	}
+      auto tmp = MIi;
+      MIi--;
+      tmp->removeFromParent();
+    }
 
-	if (zomtagUtils->isAddSub(*MIi))
-	{
-		auto op_src = MIi->getOperand(MIi->getNumOperands() - 1);
-		if (op_src.isMetadata())
-		{
-			const unsigned ptr_reg = MIi->getOperand(1).getReg();
-			const MCInstrDesc &II = TII->get(AArch64::ANDSXri);							// ANDSXri
-			const auto &DL = MIi->getDebugLoc();
-			int64_t imm = 0x100000000;
-/*	
-			auto tmp = MIi + 1;	
+  if (zomtagUtils->isAddSub(*MIi))
+    {
+      auto op_src = MIi->getOperand(MIi->getNumOperands() - 1);
+      if (op_src.isMetadata())
+        {
+          const unsigned ptr_reg = MIi->getOperand(1).getReg();
+          const MCInstrDesc &II = TII->get(AArch64::ANDSXri);							// ANDSXri
+          const auto &DL = MIi->getDebugLoc();
+          int64_t imm = 0x100000000;
+          /*	
+                auto tmp = MIi + 1;	
 	
-			MIi->print(errs());
-			MachineInstrBuilder MIB =
-			BuildMI(MBB, MIi, DL, II, AArch64::XZR)
-							.addReg(ptr_reg)
-							.addImm(AArch64_AM::encodeLogicalImmediate(imm, 64));
-			errs() << "********** TST ";
-			MIB->print(errs());
-*/
-		}
-	}
-	return;
+                MIi->print(errs());
+                MachineInstrBuilder MIB =
+                BuildMI(MBB, MIi, DL, II, AArch64::XZR)
+                .addReg(ptr_reg)
+                .addImm(AArch64_AM::encodeLogicalImmediate(imm, 64));
+                errs() << "********** TST ";
+                MIB->print(errs());
+          */
+        }
+    }
+  return;
 }
