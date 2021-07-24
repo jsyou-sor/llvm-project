@@ -46,7 +46,7 @@ FunctionPass *createAArch64CleanupLocalDynamicTLSPass();
 
 FunctionPass *createAArch64CollectLOHPass();
 
-FunctionPass *createAArch64TestZomTagPass();
+ModulePass *createAArch64TestZomTagPass();
 
 void initializeAArch64A53Fix835769Pass(PassRegistry&);
 void initializeAArch64A57FPLoadBalancingPass(PassRegistry&);

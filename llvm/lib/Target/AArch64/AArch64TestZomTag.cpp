@@ -57,17 +57,18 @@ namespace llvm
 
 namespace
 {
-  class TestZomTag : public MachineFunctionPass 
+  class TestZomTag : public ModulePass
   {
   public:
     static char ID;
-    TestZomTag() : MachineFunctionPass(ID) {
+    TestZomTag() : ModulePass(ID) {
       initializeTestZomTagPass(*PassRegistry::getPassRegistry());    
     }
     StringRef getPassName() const override { return "zomtag-ptr"; }
 
     bool doInitialization(Module &M) override;
-    bool runOnMachineFunction(MachineFunction &F) override;
+    bool runOnModule(Module &M) override;
+    bool runOnMachineFunction(MachineFunction &F);
     void instrumentTagLoading(MachineBasicBlock &MBB, MachineBasicBlock::instr_iterator &MIi);
     void instrumentZoneIsolation(MachineBasicBlock &MBB, MachineBasicBlock::instr_iterator &MIi);
 
@@ -85,7 +86,7 @@ namespace
 
 INITIALIZE_PASS(TestZomTag, "AArch64 Zomtag Pass", AARCH64_ZOMTAG_PASS_NAME, false, false)
 
-FunctionPass *llvm::createAArch64TestZomTagPass()
+ModulePass *llvm::createAArch64TestZomTagPass()
 {
   return new TestZomTag();
 }
@@ -95,6 +96,19 @@ char TestZomTag::ID = 0;
 bool TestZomTag::doInitialization(Module &M)
 {
   return false;
+}
+
+bool TestZomTag::runOnModule(Module &M)
+{
+  //get global var
+
+  MachineModuleInfo &MMI = getAnalysis<MachineModuleInfo>();
+  for (Function &F : M){
+    MachineFunction &MF = MMI.getMachineFunction(F);
+    runOnMachineFunction(MF);
+    // MachineFunction::MachineFunction(Function &F,const LLVMTargetMachine &Target, const TargetSubtargetInfo &STI, unsigned FunctionNum, MachineModuleInfo &MMI)
+    // runOnMahcineFunction(llvm::MachineFunction(&F, ));
+  }
 }
 
 bool TestZomTag::runOnMachineFunction(MachineFunction &MF)
