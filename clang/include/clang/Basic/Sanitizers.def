@@ -40,6 +40,9 @@
 // ZomTag
 SANITIZER("zomtag", ZomTag)
 
+// sgxbounds
+SANITIZER("sgxbounds", SgxBounds)
+
 // AddressSanitizer
 SANITIZER("address", Address)
 

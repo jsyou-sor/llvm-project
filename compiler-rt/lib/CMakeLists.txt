@@ -5,6 +5,7 @@ include(AddCompilerRT)
 include(SanitizerUtils)
 
 add_subdirectory(zomtag)
+add_subdirectory(sgxbounds)
 
 # Hoist the building of sanitizer_common on whether we're building either the
 # sanitizers or xray (or both).

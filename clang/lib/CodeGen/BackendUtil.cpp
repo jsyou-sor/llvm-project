@@ -196,6 +196,10 @@ static void addSanitizerCoveragePass(const PassManagerBuilder &Builder,
   PM.add(createSanitizerCoverageModulePass(Opts));
 }
 
+static void addSgxBoundsPasses(const PassManagerBuilder &Builder, legacy::PassManagerBase &PM) {
+	PM.add(createSgxBoundsModulePass());
+}
+
 static void addAddressSanitizerPasses(const PassManagerBuilder &Builder,
                                       legacy::PassManagerBase &PM) {
   const PassManagerBuilderWrapper &BuilderWrapper =
@@ -397,6 +401,13 @@ void EmitAssemblyHelper::CreatePasses(legacy::PassManager &MPM,
     PMBuilder.addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0,
                            addSanitizerCoveragePass);
   }
+
+	if (LangOpts.Sanitize.has(SanitizerKind::SgxBounds)) {
+		PMBuilder.addExtension(PassManagerBuilder::EP_OptimizerLast,
+													 addSgxBoundsPasses);
+		PMBuilder.addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0,
+													 addSgxBoundsPasses);	
+	}
 
   if (LangOpts.Sanitize.has(SanitizerKind::Address)) {
     PMBuilder.addExtension(PassManagerBuilder::EP_OptimizerLast,

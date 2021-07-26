@@ -3288,6 +3288,11 @@ collectSanitizerRuntimes(const ToolChain &TC, const ArgList &Args,
   if (SanArgs.needsAsanRt() && SanArgs.needsSharedAsanRt()) {
     SharedRuntimes.push_back("asan");
   }
+
+	if (SanArgs.needsSgxBoundsRt()) {
+		StaticRuntimes.push_back("sgxbounds");
+	}	
+
   // The stats_client library is also statically linked into DSOs.
   if (SanArgs.needsStatsRt())
     StaticRuntimes.push_back("stats_client");

@@ -118,9 +118,14 @@ static void *lowfat_fallback_malloc(size_t size)
  */
 extern bool lowfat_malloc_init(void)
 {
+
+	fprintf(stderr, "[ZOMETAG]\tlowfat_malloc_init...!\n");
+
 	// init sizemeta  
-	for(sizeid_t idx=0;idx<LOWFAT_NUM_REGIONS;idx++)
+	for(size_t i = 0; i < LOWFAT_NUM_REGIONS; i++)
 	{
+		size_t idx = i + 1;
+
 		sizeinfo_t sizeinfo = &SIZEMETA[idx];
 		
 		if(!lowfat_mutex_init(&sizeinfo->mutex))
@@ -128,18 +133,18 @@ extern bool lowfat_malloc_init(void)
 		
 		sizeinfo->freelist = 0; // NULL_REGION
 	
-		uint32_t roffset;           // Offset for ASLR
+		uint32_t roffset;
 		lowfat_rand(&roffset, sizeof(roffset));
 		roffset &= LOWFAT_HEAP_ASLR_MASK;
 		roffset &= 0b111111111000000;
 	
-		lowfat_regioninfo_t info = LOWFAT_REGION_INFO + idx +1;
+		lowfat_regioninfo_t info = LOWFAT_REGION_INFO + idx;
 		info->offset =roffset;
-
 	}
 
 	if(!lowfat_mutex_init(&regionmutex))
 		return false;
+	
 	freeregion = 1;
 	
 	// init sizemeta end
@@ -161,19 +166,23 @@ static bool zomtag_malloc_init_region(regionid_t idx)
 	//uint8_t *startptr = (uint8_t *)lowfat_base(heapptr + lowfat_size(heapptr) + LOWFAT_PAGE_SIZE);
 
 	lowfat_regioninfo_t info = LOWFAT_REGION_INFO + idx;
+
 	if (!lowfat_mutex_init(&info->mutex))
 		return false;
 
 	uint8_t *startptr = (uint8_t *)lowfat_base(heapptr + info->offset + lowfat_size(heapptr) + LOWFAT_PAGE_SIZE);
+	fprintf(stderr, "[ZOMETAG]\tstartptr: %p\n", startptr);
+	fprintf(stderr, "[ZOMETAG]\troffset:  %x\n", info->offset);
         
 	info->freelist  = NULL;
 	//info->freeptr   = (uint8_t*)lowfat_base(startptr+info->offset);
-	info->freeptr		= startptr;
+	info->freeptr		= (uint8_t*)lowfat_base(startptr+info->offset);;
 	info->endptr    = heapptr + LOWFAT_HEAP_MEMORY_SIZE;
 	info->accessptr = LOWFAT_PAGES_BASE(startptr);
 
 	if(!lowfat_mutex_init(&info->linkmutex))
 		return false;
+
 	//info->allocsizeid = NUM_SIZES; // assume to be already assigned
 	info->alloccount = ALLOC_PER_REGION; // can be smaller
 	info->samesizenext = 0; // NULL_REGION
@@ -281,10 +290,10 @@ extern void *lowfat_malloc(size_t size)
 extern void *lowfat_malloc_index(size_t /* regionid_t */ idx, size_t size)
 {
 #ifdef LOWFAT_STANDALONE
-    // In "standalone" mode, malloc() may be called before the constructors,
+	// In "standalone" mode, malloc() may be called before the constructors,
 	// so must initialize here.
-    if (!lowfat_malloc_inited)
-        lowfat_init();
+	if (!lowfat_malloc_inited)
+		lowfat_init();
 #endif
 
     if (idx == 0)

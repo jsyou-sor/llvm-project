@@ -47,6 +47,7 @@ class SanitizerArgs {
   SanitizerArgs(const ToolChain &TC, const llvm::opt::ArgList &Args);
 
   bool needsZomTagRT() const { return Sanitizers.has(SanitizerKind::ZomTag); }
+	bool needsSgxBoundsRt() const { return Sanitizers.has(SanitizerKind::SgxBounds); }
   bool needsAsanRt() const { return Sanitizers.has(SanitizerKind::Address); }
   bool needsSharedAsanRt() const { return AsanSharedRuntime; }
   bool needsTsanRt() const { return Sanitizers.has(SanitizerKind::Thread); }

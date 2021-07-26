@@ -343,22 +343,16 @@ void LOWFAT_CONSTRUCTOR lowfat_init(void)
 
 #ifndef LOWFAT_DATA_ONLY
 
-		// Init tag memory (48bit VA)
 		fprintf(stderr, "\n[ZOMETAG]\tRandom region allocator\n");
 
+		// Init tag memory
 		for (size_t i = 1; i <= 2050; i++)
 		{
 			//void *tag_start = (0x100000000 * i) + (uint8_t *)lowfat_region(LOWFAT_NUM_REGIONS + 1);
 			void *tag_start = (void *)(0x100000000 * (32701 + i));
-			if (i == 1)
-				fprintf(stderr, "tag_start: %p\n", tag_start);
-			if (i == 2050)
-				fprintf(stderr, "tag_end: %p\n", tag_start);
-			//void *tag_ptr = lowfat_map(tag_start, TAG_MEMORY_SIZE, false, false, -1);
 			
-			void *tag_ptr = mmap(tag_start, TAG_MEMORY_SIZE, PROT_NONE | PROT_READ, MAP_NORESERVE | MAP_ANONYMOUS | MAP_FIXED | MAP_PRIVATE, -1, 0);
-			if (i == 1 || i == 2050)
-				fprintf(stderr, "tag_ptr: %p\n", tag_ptr);
+			//void *tag_ptr = lowfat_map(tag_start, TAG_MEMORY_SIZE, false, false, -1);
+			void *tag_ptr = mmap(tag_start, TAG_MEMORY_SIZE, PROT_NONE | PROT_READ | PROT_WRITE, MAP_NORESERVE | MAP_ANONYMOUS | MAP_FIXED | MAP_PRIVATE, -1, 0);
 
 			if (tag_start != tag_ptr)
 				goto mmap_error;
@@ -367,28 +361,23 @@ void LOWFAT_CONSTRUCTOR lowfat_init(void)
     // Init regions for lowfat_malloc()
     for (size_t i = 1; i <= LOWFAT_NUM_REGIONS; i++)
     {
-    	void *heap_start = (uint8_t *)lowfat_region(i) +
-            LOWFAT_HEAP_MEMORY_OFFSET;
-    	void *ptr = lowfat_map(heap_start, LOWFAT_HEAP_MEMORY_SIZE, false,
-            false, -1);
-	/* fprintf(stderr, "region:\t\t%d\n", i); */
-	/* fprintf(stderr,"heap_start:\t %p\n", heap_start); */
-	/* fprintf(stderr, "ptr:\t\t%p\n", ptr); */
+    	void *heap_start = (uint8_t *)lowfat_region(i) + LOWFAT_HEAP_MEMORY_OFFSET;
+    	void *ptr = lowfat_map(heap_start, LOWFAT_HEAP_MEMORY_SIZE, false, false, -1);
+	
+			fprintf(stderr, "[ZOMETAG]\tregion:    %d\n", i);
+			fprintf(stderr, "[ZOMETAG]\theap_start:%p\n", heap_start);
+			/* fprintf(stderr, "ptr:\t\t%p\n", ptr); */
 			//fprintf(stderr, "ptr: %p\n", ptr);
-			if (ptr != heap_start){
-	  /* fprintf(stderr, "======debug======\n"); */
-          /* fprintf(stderr, "heap_start:\t%p\n", heap_start); */
-	  /* fprintf(stderr, "ptr:\t\t%p\n", ptr); */
-	  /* fprintf(stderr, "i:\t\t%d\n", i); */
+			
+			if (ptr != heap_start)
             goto mmap_error;
-			}
     }
 
     // Initialize malloc()
     if (!lowfat_malloc_init())
-        lowfat_error("failed to initialize lowfat malloc(): %s",
-            strerror(errno));
-    lowfat_malloc_inited = true;
+			lowfat_error("failed to initialize lowfat malloc(): %s", strerror(errno));
+
+		lowfat_malloc_inited = true;
 
 #if !defined(LOWFAT_STANDALONE) && !defined(LOWFAT_WINDOWS)
 

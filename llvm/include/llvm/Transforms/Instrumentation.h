@@ -103,6 +103,9 @@ ModulePass *createInstrProfilingLegacyPass(
 // Insert ZomTag instrumentation
 ModulePass *createZomTagPass();
 
+// Insert sgxbounds instrumentation
+ModulePass *createSgxBoundsModulePass();
+
 // Insert AddressSanitizer (address sanity checking) instrumentation
 FunctionPass *createAddressSanitizerFunctionPass(bool CompileKernel = false,
                                                  bool Recover = false,
