@@ -25,6 +25,7 @@
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Operator.h"
 #include "llvm/IR/GlobalVariable.h"
+#include "llvm/IR/DerivedTypes.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
@@ -74,8 +75,8 @@ namespace
 
     bool doInitialization(Module &M) override;
     bool runOnModule(Module &M) override;
-    bool machineFunctionDo(MachineFunction &F, bool &initialized, GlobalValue *GV);
-    void instrumentTagLoading(MachineBasicBlock &MBB, MachineBasicBlock::instr_iterator &MIi, GlobalValue *GV);
+    bool machineFunctionDo(MachineFunction &F);
+    void instrumentTagLoading(MachineBasicBlock &MBB, MachineBasicBlock::instr_iterator &MIi);
     void instrumentZoneIsolation(MachineBasicBlock &MBB, MachineBasicBlock::instr_iterator &MIi);
 
   private:
@@ -111,19 +112,40 @@ bool TestZomTag::runOnModule(Module &M)
   // IRBuilder<> Builder(M.getContext());
   // M.getOrInsertGlobal("__security_cookie",
   //                     Type::getInt8PtrTy(M.getContext()));
+
+  //fuction call get_mte_tag_mem
+  //unsigned int = return val;
   bool initialized = false;
-  errs() << "@@@begin debug\n";
-  M.getOrInsertGlobal("__mte_tag_mem", Type::getInt8PtrTy(M.getContext()));
-  errs() << "@@@__mte_Tag_mem\n";
-  GlobalVariable *GV = M.getNamedGlobal("__mte_tag_mem");
-  errs() << "@@@get or insert global : 0x"<< GV << "\n";
-  errs() << "@@@get or insert global2 : 0x"<< *GV << "\n";
+  // M.getOrInsertGlobal("__mte_tag_mem", Type::getInt8PtrTy(M.getContext()));
+  // errs() << "@@@__mte_Tag_mem\n";
+  // GlobalVariable *GV = M.getNamedGlobal("__mte_tag_mem");
+  // errs() << "@@@get or insert global : 0x"<< GV << "\n";
+  // errs() << "@@@get or insert global2 : 0x"<< *GV << "\n";
+  for (Function &F : M) {
+    for (BasicBlock &B : F){
+      for (Instruction &I : B){
+	IRBuilder<> IRB(&I);
+	errs() << "@@@begin debug\n";
+	FunctionType* int64TypeWithoutArgs = FunctionType::get(Type::getInt64Ty(M.getContext()),
+							       {Type::getVoidTy(M.getContext())}, false);
+	Constant* c = M.getOrInsertFunction("__get_offset",
+					    int64TypeWithoutArgs
+					    );
+	Value* ret = IRB.CreateCall(c, {});
+	errs()<<"@@@ret: " <<*ret<<"\n";
+	
+	initialized = true;
+	goto l0;
+      }
+    }
+  }
+  l0:
   MachineModuleInfo &MMI = getAnalysis<MachineModuleInfo>();
-  errs() << "@@@MachineModuleInfo\n";
+  // errs() << "@@@MachineModuleInfo\n";
   for (Function &F : M){
     MachineFunction &MF = MMI.getMachineFunction(F);
     errs() << "@@@get machine function\n";
-    machineFunctionDo(MF, initialized, (GlobalValue*)GV);
+    machineFunctionDo(MF);
     errs() << "@@@run machine funciton\n";
   }
 
@@ -132,13 +154,12 @@ bool TestZomTag::runOnModule(Module &M)
   return true;
 }
 
-bool TestZomTag::machineFunctionDo(MachineFunction &MF, bool& initialized, GlobalValue *GV)
+bool TestZomTag::machineFunctionDo(MachineFunction &MF)
 {
   TM = &MF.getTarget();
   STI = &MF.getSubtarget<AArch64Subtarget>();
   TII = STI->getInstrInfo();
   TRI = STI->getRegisterInfo();
-  errs() << "@@@GV : " << GV <<"\n";
 
   zomtagUtils = ZomTagUtils::get(TRI, TII);
 
@@ -150,7 +171,7 @@ bool TestZomTag::machineFunctionDo(MachineFunction &MF, bool& initialized, Globa
 	  errs()<< "@@@MTi\n";
           if (option_tl_nop || option_tl_imp1 ||
               option_tl_pre || option_tl_imp2){}
-            instrumentTagLoading(MBB, MIi, GV);
+            instrumentTagLoading(MBB, MIi);
 
           // if (option_default)
           //   instrumentZoneIsolation(MBB, MIi);
@@ -159,7 +180,7 @@ bool TestZomTag::machineFunctionDo(MachineFunction &MF, bool& initialized, Globa
   return true;
 }
 
-void TestZomTag::instrumentTagLoading(MachineBasicBlock &MBB, MachineBasicBlock::instr_iterator &MIi, GlobalValue* GV)
+void TestZomTag::instrumentTagLoading(MachineBasicBlock &MBB, MachineBasicBlock::instr_iterator &MIi)
 {
 
   unsigned dst;
@@ -196,9 +217,10 @@ void TestZomTag::instrumentTagLoading(MachineBasicBlock &MBB, MachineBasicBlock:
 	  errs()<< "@@@init\n";
 
 	  errs()<< "@@@addGV begin\n";
+	  
 	  // MOV X15, GV
 	  BuildMI(MBB, MIi, DL, TII->get(AArch64::MOVZXi), x15)
-	    .addGlobalAddress(GV);
+	    .addImm(0);
 	  errs()<< "@@@addGV end\n";
 	    //   .addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
 
@@ -212,6 +234,7 @@ void TestZomTag::instrumentTagLoading(MachineBasicBlock &MBB, MachineBasicBlock:
 	  errs()<< "@@@option_tl_imp2 : "<<option_tl_imp2<<"\n";
 	  errs()<< "@@@option_tl_nop : "<<option_tl_nop<<"\n";
 	  errs()<< "@@@option_tl_pre : "<<option_tl_pre<<"\n";
+	  errs()<< "@@@option_tl_sparc : "<<option_tl_sparc<<"\n";
           if (option_tl_nop)
             {
               BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
