@@ -65,6 +65,11 @@ namespace
     TestZomTag() : ModulePass(ID) {
       initializeTestZomTagPass(*PassRegistry::getPassRegistry());    
     }
+    void getAnalysisUsage(AnalysisUsage &AU) const override {
+      AU.addRequired<MachineModuleInfo>();
+      // AU.setPreservesAll();
+      ModulePass::getAnalysisUsage(AU);
+    }
     StringRef getPassName() const override { return "zomtag-ptr"; }
 
     bool doInitialization(Module &M) override;
