@@ -69,7 +69,7 @@ namespace
 
     bool doInitialization(Module &M) override;
     bool runOnModule(Module &M) override;
-    bool runOnMachineFunction(MachineFunction &F, bool &initialized, Value &GV);
+    bool runOnMachineFunction(MachineFunction &F, bool &initialized, GlobalValue *GV);
     void instrumentTagLoading(MachineBasicBlock &MBB, MachineBasicBlock::instr_iterator &MIi);
     void instrumentZoneIsolation(MachineBasicBlock &MBB, MachineBasicBlock::instr_iterator &MIi);
 
@@ -110,14 +110,14 @@ bool TestZomTag::runOnModule(Module &M)
   MachineModuleInfo &MMI = getAnalysis<MachineModuleInfo>();
   for (Function &F : M){
     MachineFunction &MF = MMI.getMachineFunction(F);
-    runOnMachineFunction(MF, initialized, *(Value *)GV);
+    runOnMachineFunction(MF, initialized, (GlobalValue*)GV);
   }
 
     // MachineFunction::MachineFunction(Function &F,const LLVMTargetMachine &Target, const TargetSubtargetInfo &STI, unsigned FunctionNum, MachineModuleInfo &MMI)
     // runOnMahcineFunction(llvm::MachineFunction(&F, ));
 }
 
-bool TestZomTag::runOnMachineFunction(MachineFunction &MF, bool& initialized, Value &GV)
+bool TestZomTag::runOnMachineFunction(MachineFunction &MF, bool& initialized, GlobalValue *GV)
 {
   TM = &MF.getTarget();
   STI = &MF.getSubtarget<AArch64Subtarget>();
@@ -134,9 +134,9 @@ bool TestZomTag::runOnMachineFunction(MachineFunction &MF, bool& initialized, Va
             if(option_tl_imp1 || option_tl_imp2){
               const auto &DL = MIi->getDebugLoc();
 
-              // MOV X15, 0x7fbe, LSL, 32
-              // BuildMI(&MF, MIi, DL, TII->get(AArch64::MOVZXi), x15)
-              //   .addCImm(GV)
+              // MOV X15, GV
+              BuildMI(MF, DL, TII->get(AArch64::MOVZXi), x15)
+                .addGlobalAddress(GV);
               //   .addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
 
             }
