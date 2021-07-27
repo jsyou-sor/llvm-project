@@ -106,11 +106,11 @@ bool TestZomTag::runOnModule(Module &M)
   // M.getOrInsertGlobal("__security_cookie",
   //                     Type::getInt8PtrTy(M.getContext()));
   bool initialized = false;
-  errs << "@@@begin debug\n";
+  errs() << "@@@begin debug\n";
   M.getOrInsertGlobal("__mte_tag_mem", Type::getInt8PtrTy(M.getContext()));
-  errs << "@@@__mte_Tag_mem\n";
+  errs() << "@@@__mte_Tag_mem\n";
   GlobalVariable *GV = M.getNamedGlobal("__mte_tag_mem");
-  errs << "@@@get or insert global : 0x"<< GV << "\n";
+  errs() << "@@@get or insert global : 0x"<< GV << "\n";
   MachineModuleInfo &MMI = getAnalysis<MachineModuleInfo>();
   for (Function &F : M){
     MachineFunction &MF = MMI.getMachineFunction(F);
@@ -127,7 +127,7 @@ bool TestZomTag::runOnMachineFunction(MachineFunction &MF, bool& initialized, Gl
   STI = &MF.getSubtarget<AArch64Subtarget>();
   TII = STI->getInstrInfo();
   TRI = STI->getRegisterInfo();
-  errs << "@@@GV : " << GV <<"\n";
+  errs() << "@@@GV : " << GV <<"\n";
 
   zomtagUtils = ZomTagUtils::get(TRI, TII);
 
