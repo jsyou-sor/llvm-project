@@ -90,14 +90,15 @@ namespace
   };
 } // end anonymous namespace
 
-INITIALIZE_PASS(TestZomTag, "AArch64 Zomtag Pass", AARCH64_ZOMTAG_PASS_NAME, false, false)
+char TestZomTag::ID = 0;
+INITIALIZE_PASS_BEGIN(TestZomTag, "AArch64 Zomtag Pass", AARCH64_ZOMTAG_PASS_NAME, false, false)
+INITIALIZE_PASS_DEPENDENCY(MachineModuleInfo)
+INITIALIZE_PASS_END(TestZomTag, "AArch64 Zomtag Pass", AARCH64_ZOMTAG_PASS_NAME, false, false)
 
 ModulePass *llvm::createAArch64TestZomTagPass()
 {
   return new TestZomTag();
 }
-
-char TestZomTag::ID = 0;
 
 bool TestZomTag::doInitialization(Module &M)
 {
@@ -128,6 +129,7 @@ bool TestZomTag::runOnModule(Module &M)
 
     // MachineFunction::MachineFunction(Function &F,const LLVMTargetMachine &Target, const TargetSubtargetInfo &STI, unsigned FunctionNum, MachineModuleInfo &MMI)
     // runOnMahcineFunction(llvm::MachineFunction(&F, ));
+  return true;
 }
 
 bool TestZomTag::machineFunctionDo(MachineFunction &MF, bool& initialized, GlobalValue *GV)
@@ -148,7 +150,7 @@ bool TestZomTag::machineFunctionDo(MachineFunction &MF, bool& initialized, Globa
 	  errs()<< "@@@MTi\n";
           if (option_tl_nop || option_tl_imp1 ||
               option_tl_pre || option_tl_imp2){}
-            // instrumentTagLoading(MBB, MIi, GV);
+            instrumentTagLoading(MBB, MIi, GV);
 
           // if (option_default)
           //   instrumentZoneIsolation(MBB, MIi);
