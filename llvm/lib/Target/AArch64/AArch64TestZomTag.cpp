@@ -75,7 +75,7 @@ namespace
     bool doInitialization(Module &M) override;
     bool runOnModule(Module &M) override;
     bool machineFunctionDo(MachineFunction &F, bool &initialized, GlobalValue *GV);
-    void instrumentTagLoading(MachineBasicBlock &MBB, MachineBasicBlock::instr_iterator &MIi);
+    void instrumentTagLoading(MachineBasicBlock &MBB, MachineBasicBlock::instr_iterator &MIi, GlobalValue *GV);
     void instrumentZoneIsolation(MachineBasicBlock &MBB, MachineBasicBlock::instr_iterator &MIi);
 
   private:
@@ -142,25 +142,13 @@ bool TestZomTag::machineFunctionDo(MachineFunction &MF, bool& initialized, Globa
 
   for (auto &MBB : MF)
     {
+      errs()<< "@@@MBB\n" ;
       for (auto MIi = MBB.instr_begin(); MIi != MBB.instr_end(); MIi++)
         {
-          if(! (initialized)){
-            if(option_tl_imp1 || option_tl_imp2){
-              const auto &DL = MIi->getDebugLoc();
-
-              errs()<< "@@@addGV begin\n";
-              // MOV X15, GV
-              BuildMI(MF, DL, TII->get(AArch64::MOVZXi), x15)
-                .addGlobalAddress(GV);
-              errs()<< "@@@addGV end\n";
-              //   .addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
-
-            }
-            initialized = true;
-          }
+	  errs()<< "@@@MTi\n";
           if (option_tl_nop || option_tl_imp1 ||
-              option_tl_pre || option_tl_imp2)
-            instrumentTagLoading(MBB, MIi);
+              option_tl_pre || option_tl_imp2){}
+            // instrumentTagLoading(MBB, MIi, GV);
 
           // if (option_default)
           //   instrumentZoneIsolation(MBB, MIi);
@@ -169,7 +157,7 @@ bool TestZomTag::machineFunctionDo(MachineFunction &MF, bool& initialized, Globa
   return true;
 }
 
-void TestZomTag::instrumentTagLoading(MachineBasicBlock &MBB, MachineBasicBlock::instr_iterator &MIi)
+void TestZomTag::instrumentTagLoading(MachineBasicBlock &MBB, MachineBasicBlock::instr_iterator &MIi, GlobalValue* GV)
 {
 
   unsigned dst;
@@ -192,17 +180,36 @@ void TestZomTag::instrumentTagLoading(MachineBasicBlock &MBB, MachineBasicBlock:
       dst = MIi->getOperand(0).getReg();
       mem = MIi->getOperand(1).getReg();
       if (zomtagUtils->isLoadPair(*MIi) ||
-          zomtagUtils->isStorePair(*MIi))
+          zomtagUtils->isStorePair(*MIi)){
+	errs()<<"@@@isPair? \n";
         mem = MIi->getOperand(2).getReg();
+	errs()<<"@@@mem "<<mem<<"\n";
+	errs()<<"@@@MIi->getOperand(2).getReg()"<<MIi->getOperand(2).getReg()<<"\n";
+	
+      }
 
       if (mem != AArch64::SP && mem != AArch64::FP)
         {
+
+	  errs()<< "@@@init\n";
+
+	  errs()<< "@@@addGV begin\n";
+	  // MOV X15, GV
+	  BuildMI(MBB, MIi, DL, TII->get(AArch64::MOVZXi), x15)
+	    .addGlobalAddress(GV);
+	  errs()<< "@@@addGV end\n";
+	    //   .addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
+
           /*commented out for Vatalloc*/
           // MOV X15, 0x7fbe, LSL, 32
           // BuildMI(MBB, MIi, DL, TII->get(AArch64::MOVZXi), x15)
           //   .addImm(imm)
           //   .addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
-				
+
+	  errs()<< "@@@option_tl_imp1 : "<<option_tl_imp1<<"\n";
+	  errs()<< "@@@option_tl_imp2 : "<<option_tl_imp2<<"\n";
+	  errs()<< "@@@option_tl_nop : "<<option_tl_nop<<"\n";
+	  errs()<< "@@@option_tl_pre : "<<option_tl_pre<<"\n";
           if (option_tl_nop)
             {
               BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
@@ -214,6 +221,7 @@ void TestZomTag::instrumentTagLoading(MachineBasicBlock &MBB, MachineBasicBlock:
 
           if (option_tl_imp1)
             {
+	      errs()<<"tl_imp1\n";
               if (!option_tl_sparc)
                 BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
                   .addReg(x15)
@@ -252,6 +260,7 @@ void TestZomTag::instrumentTagLoading(MachineBasicBlock &MBB, MachineBasicBlock:
 
           if (option_tl_pre)
             {
+	      errs() <<"@@@@tl_pre\n";
               assert(mem.isReg());
 				
               if (!option_tl_sparc)
