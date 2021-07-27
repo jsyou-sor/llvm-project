@@ -24,6 +24,7 @@
 #include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Operator.h"
+#include "llvm/IR/GlobalVariable.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
@@ -68,7 +69,7 @@ namespace
 
     bool doInitialization(Module &M) override;
     bool runOnModule(Module &M) override;
-    bool runOnMachineFunction(MachineFunction &F);
+    bool runOnMachineFunction(MachineFunction &F, bool &initialized, Value &GV);
     void instrumentTagLoading(MachineBasicBlock &MBB, MachineBasicBlock::instr_iterator &MIi);
     void instrumentZoneIsolation(MachineBasicBlock &MBB, MachineBasicBlock::instr_iterator &MIi);
 
@@ -101,17 +102,22 @@ bool TestZomTag::doInitialization(Module &M)
 bool TestZomTag::runOnModule(Module &M)
 {
   //get global var
-
+  // IRBuilder<> Builder(M.getContext());
+  // M.getOrInsertGlobal("__security_cookie",
+  //                     Type::getInt8PtrTy(M.getContext()));
+  bool initialized = false;
+  GlobalVariable *GV = M.getNamedGlobal("__mte_tag_mem");
   MachineModuleInfo &MMI = getAnalysis<MachineModuleInfo>();
   for (Function &F : M){
     MachineFunction &MF = MMI.getMachineFunction(F);
-    runOnMachineFunction(MF);
+    runOnMachineFunction(MF, initialized, *(Value *)GV);
+  }
+
     // MachineFunction::MachineFunction(Function &F,const LLVMTargetMachine &Target, const TargetSubtargetInfo &STI, unsigned FunctionNum, MachineModuleInfo &MMI)
     // runOnMahcineFunction(llvm::MachineFunction(&F, ));
-  }
 }
 
-bool TestZomTag::runOnMachineFunction(MachineFunction &MF)
+bool TestZomTag::runOnMachineFunction(MachineFunction &MF, bool& initialized, Value &GV)
 {
   TM = &MF.getTarget();
   STI = &MF.getSubtarget<AArch64Subtarget>();
@@ -124,12 +130,24 @@ bool TestZomTag::runOnMachineFunction(MachineFunction &MF)
     {
       for (auto MIi = MBB.instr_begin(); MIi != MBB.instr_end(); MIi++)
         {
+          if(! (initialized)){
+            if(option_tl_imp1 || option_tl_imp2){
+              const auto &DL = MIi->getDebugLoc();
+
+              // MOV X15, 0x7fbe, LSL, 32
+              // BuildMI(&MF, MIi, DL, TII->get(AArch64::MOVZXi), x15)
+              //   .addCImm(GV)
+              //   .addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
+
+            }
+            initialized = true;
+          }
           if (option_tl_nop || option_tl_imp1 ||
               option_tl_pre || option_tl_imp2)
             instrumentTagLoading(MBB, MIi);
 
-          if (option_default)
-            instrumentZoneIsolation(MBB, MIi);
+          // if (option_default)
+          //   instrumentZoneIsolation(MBB, MIi);
         }
     }
   return true;
@@ -141,7 +159,7 @@ void TestZomTag::instrumentTagLoading(MachineBasicBlock &MBB, MachineBasicBlock:
   unsigned dst;
   unsigned mem;
   const auto &DL = MIi->getDebugLoc();
-  const unsigned imm = 0x7fbe;
+  // const unsigned imm = 0x7fbe;
 
   if (zomtagUtils->isPrePostIndexed(*MIi))
     return;
@@ -163,10 +181,11 @@ void TestZomTag::instrumentTagLoading(MachineBasicBlock &MBB, MachineBasicBlock:
 
       if (mem != AArch64::SP && mem != AArch64::FP)
         {
+          /*commented out for Vatalloc*/
           // MOV X15, 0x7fbe, LSL, 32
-          BuildMI(MBB, MIi, DL, TII->get(AArch64::MOVZXi), x15)
-            .addImm(imm)
-            .addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
+          // BuildMI(MBB, MIi, DL, TII->get(AArch64::MOVZXi), x15)
+          //   .addImm(imm)
+          //   .addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
 				
           if (option_tl_nop)
             {
