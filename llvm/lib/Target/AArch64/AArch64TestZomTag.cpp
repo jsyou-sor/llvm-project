@@ -74,7 +74,7 @@ namespace
 
     bool doInitialization(Module &M) override;
     bool runOnModule(Module &M) override;
-    bool runOnMachineFunction(MachineFunction &F, bool &initialized, GlobalValue *GV);
+    bool machineFunctionDo(MachineFunction &F, bool &initialized, GlobalValue *GV);
     void instrumentTagLoading(MachineBasicBlock &MBB, MachineBasicBlock::instr_iterator &MIi);
     void instrumentZoneIsolation(MachineBasicBlock &MBB, MachineBasicBlock::instr_iterator &MIi);
 
@@ -122,7 +122,7 @@ bool TestZomTag::runOnModule(Module &M)
   for (Function &F : M){
     MachineFunction &MF = MMI.getMachineFunction(F);
     errs() << "@@@get machine function\n";
-    runOnMachineFunction(MF, initialized, (GlobalValue*)GV);
+    machineFunctionDo(MF, initialized, (GlobalValue*)GV);
     errs() << "@@@run machine funciton\n";
   }
 
@@ -130,7 +130,7 @@ bool TestZomTag::runOnModule(Module &M)
     // runOnMahcineFunction(llvm::MachineFunction(&F, ));
 }
 
-bool TestZomTag::runOnMachineFunction(MachineFunction &MF, bool& initialized, GlobalValue *GV)
+bool TestZomTag::machineFunctionDo(MachineFunction &MF, bool& initialized, GlobalValue *GV)
 {
   TM = &MF.getTarget();
   STI = &MF.getSubtarget<AArch64Subtarget>();
