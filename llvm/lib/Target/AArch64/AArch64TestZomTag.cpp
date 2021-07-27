@@ -111,10 +111,14 @@ bool TestZomTag::runOnModule(Module &M)
   errs() << "@@@__mte_Tag_mem\n";
   GlobalVariable *GV = M.getNamedGlobal("__mte_tag_mem");
   errs() << "@@@get or insert global : 0x"<< GV << "\n";
+  errs() << "@@@get or insert global2 : 0x"<< *GV << "\n";
   MachineModuleInfo &MMI = getAnalysis<MachineModuleInfo>();
+  errs() << "@@@MachineModuleInfo\n";
   for (Function &F : M){
     MachineFunction &MF = MMI.getMachineFunction(F);
+    errs() << "@@@get machine function\n";
     runOnMachineFunction(MF, initialized, (GlobalValue*)GV);
+    errs() << "@@@run machine funciton\n";
   }
 
     // MachineFunction::MachineFunction(Function &F,const LLVMTargetMachine &Target, const TargetSubtargetInfo &STI, unsigned FunctionNum, MachineModuleInfo &MMI)
