@@ -148,9 +148,11 @@ bool TestZomTag::machineFunctionDo(MachineFunction &MF, bool& initialized, Globa
             if(option_tl_imp1 || option_tl_imp2){
               const auto &DL = MIi->getDebugLoc();
 
+              errs()<< "@@@addGV begin\n";
               // MOV X15, GV
               BuildMI(MF, DL, TII->get(AArch64::MOVZXi), x15)
                 .addGlobalAddress(GV);
+              errs()<< "@@@addGV end\n";
               //   .addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
 
             }
