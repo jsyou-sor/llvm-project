@@ -106,8 +106,9 @@ bool TestZomTag::runOnModule(Module &M)
   // M.getOrInsertGlobal("__security_cookie",
   //                     Type::getInt8PtrTy(M.getContext()));
   bool initialized = false;
+  errs << "@@@begin debug\n";
   M.getOrInsertGlobal("__mte_tag_mem", Type::getInt8PtrTy(M.getContext()));
-
+  errs << "@@@__mte_Tag_mem\n";
   GlobalVariable *GV = M.getNamedGlobal("__mte_tag_mem");
   errs << "@@@get or insert global : 0x"<< GV << "\n";
   MachineModuleInfo &MMI = getAnalysis<MachineModuleInfo>();
