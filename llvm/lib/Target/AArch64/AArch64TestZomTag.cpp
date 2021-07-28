@@ -121,32 +121,32 @@ bool TestZomTag::runOnModule(Module &M)
   // GlobalVariable *GV = M.getNamedGlobal("__mte_tag_mem");
   // errs() << "@@@get or insert global : 0x"<< GV << "\n";
   // errs() << "@@@get or insert global2 : 0x"<< *GV << "\n";
-  for (Function &F : M) {
-    for (BasicBlock &B : F){
-      for (Instruction &I : B){
-	IRBuilder<> IRB(&I);
-	errs() << "@@@begin debug\n";
-	FunctionType* int64TypeWithoutArgs = FunctionType::get(Type::getInt64Ty(M.getContext()),
-							       {Type::getVoidTy(M.getContext())}, false);
-	Constant* c = M.getOrInsertFunction("__get_offset",
-					    int64TypeWithoutArgs
-					    );
-	Value* ret = IRB.CreateCall(c, {});
-	errs()<<"@@@ret: " <<*ret<<"\n";
+  // for (Function &F : M) {
+  //   for (BasicBlock &B : F){
+  //     for (Instruction &I : B){
+  // 	IRBuilder<> IRB(&I);
+  // 	errs() << "@@@begin debug\n";
+  // 	FunctionType* int64TypeWithoutArgs = FunctionType::get(Type::getInt64Ty(M.getContext()),
+  // 							       {Type::getVoidTy(M.getContext())}, false);
+  // 	Constant* c = M.getOrInsertFunction("__get_offset",
+  // 					    int64TypeWithoutArgs
+  // 					    );
+  // 	Value* ret = IRB.CreateCall(c, {});
+  // 	errs()<<"@@@ret: " <<*ret<<"\n";
 	
-	initialized = true;
-	goto l0;
-      }
-    }
-  }
-  l0:
+  // 	initialized = true;
+  // 	goto l0;
+  //     }
+  //   }
+  // }
+  // l0:
   MachineModuleInfo &MMI = getAnalysis<MachineModuleInfo>();
   // errs() << "@@@MachineModuleInfo\n";
   for (Function &F : M){
     MachineFunction &MF = MMI.getMachineFunction(F);
-    errs() << "@@@get machine function\n";
+    // errs() << "@@@get machine function\n";
     machineFunctionDo(MF);
-    errs() << "@@@run machine funciton\n";
+ // errs() << "@@@run machine funciton\n";
   }
 
     // MachineFunction::MachineFunction(Function &F,const LLVMTargetMachine &Target, const TargetSubtargetInfo &STI, unsigned FunctionNum, MachineModuleInfo &MMI)
@@ -165,12 +165,12 @@ bool TestZomTag::machineFunctionDo(MachineFunction &MF)
 
   for (auto &MBB : MF)
     {
-      errs()<< "@@@MBB\n" ;
+      // errs()<< "@@@MBB\n" ;
       for (auto MIi = MBB.instr_begin(); MIi != MBB.instr_end(); MIi++)
         {
-	  errs()<< "@@@MTi\n";
+	  // errs()<< "@@@MTi\n";
           if (option_tl_nop || option_tl_imp1 ||
-              option_tl_pre || option_tl_imp2){}
+              option_tl_pre || option_tl_imp2)
             instrumentTagLoading(MBB, MIi);
 
           // if (option_default)
@@ -186,7 +186,7 @@ void TestZomTag::instrumentTagLoading(MachineBasicBlock &MBB, MachineBasicBlock:
   unsigned dst;
   unsigned mem;
   const auto &DL = MIi->getDebugLoc();
-  // const unsigned imm = 0x7fbe;
+  const unsigned imm = 0x7fbe;
 
   if (zomtagUtils->isPrePostIndexed(*MIi))
     return;
@@ -195,8 +195,7 @@ void TestZomTag::instrumentTagLoading(MachineBasicBlock &MBB, MachineBasicBlock:
       !(MIi->getOperand(1).isReg()))
     return;
 
-  if (MIi->getNumOperands() > 4)
-    return;
+  if (MIi->getNumOperands() > 4)    return;
 
   if (zomtagUtils->isLoad(*MIi) || zomtagUtils->isStore(*MIi))
     {
@@ -204,37 +203,37 @@ void TestZomTag::instrumentTagLoading(MachineBasicBlock &MBB, MachineBasicBlock:
       mem = MIi->getOperand(1).getReg();
       if (zomtagUtils->isLoadPair(*MIi) ||
           zomtagUtils->isStorePair(*MIi)){
-	errs()<<"@@@isPair? \n";
+	// errs()<<"@@@isPair? \n";
         mem = MIi->getOperand(2).getReg();
-	errs()<<"@@@mem "<<mem<<"\n";
-	errs()<<"@@@MIi->getOperand(2).getReg()"<<MIi->getOperand(2).getReg()<<"\n";
+	// errs()<<"@@@mem "<<mem<<"\n";
+	// errs()<<"@@@MIi->getOperand(2).getReg()"<<MIi->getOperand(2).getReg()<<"\n";
 	
       }
 
       if (mem != AArch64::SP && mem != AArch64::FP)
         {
 
-	  errs()<< "@@@init\n";
+	  // errs()<< "@@@init\n";
 
-	  errs()<< "@@@addGV begin\n";
+	  // errs()<< "@@@addGV begin\n";
 	  
-	  // MOV X15, GV
-	  BuildMI(MBB, MIi, DL, TII->get(AArch64::MOVZXi), x15)
-	    .addImm(0);
-	  errs()<< "@@@addGV end\n";
+	  // // MOV X15, GV
+	  // BuildMI(MBB, MIi, DL, TII->get(AArch64::MOVZXi), x15)
+	  //   .addImm(0);
+	  // errs()<< "@@@addGV end\n";
 	    //   .addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
 
           /*commented out for Vatalloc*/
-          // MOV X15, 0x7fbe, LSL, 32
-          // BuildMI(MBB, MIi, DL, TII->get(AArch64::MOVZXi), x15)
-          //   .addImm(imm)
-          //   .addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
+          /*MOV X15, 0x7fbe, LSL, 32*/
+          BuildMI(MBB, MIi, DL, TII->get(AArch64::MOVZXi), x15)
+            .addImm(imm)
+            .addImm(AArch64_AM::getShifterImm(AArch64_AM::LSL, 32));
 
-	  errs()<< "@@@option_tl_imp1 : "<<option_tl_imp1<<"\n";
-	  errs()<< "@@@option_tl_imp2 : "<<option_tl_imp2<<"\n";
-	  errs()<< "@@@option_tl_nop : "<<option_tl_nop<<"\n";
-	  errs()<< "@@@option_tl_pre : "<<option_tl_pre<<"\n";
-	  errs()<< "@@@option_tl_sparc : "<<option_tl_sparc<<"\n";
+	  // errs()<< "@@@option_tl_imp1 : "<<option_tl_imp1<<"\n";
+	  // errs()<< "@@@option_tl_imp2 : "<<option_tl_imp2<<"\n";
+	  // errs()<< "@@@option_tl_nop : "<<option_tl_nop<<"\n";
+	  // errs()<< "@@@option_tl_pre : "<<option_tl_pre<<"\n";
+	  // errs()<< "@@@option_tl_sparc : "<<option_tl_sparc<<"\n";
           if (option_tl_nop)
             {
               BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
@@ -246,7 +245,7 @@ void TestZomTag::instrumentTagLoading(MachineBasicBlock &MBB, MachineBasicBlock:
 
           if (option_tl_imp1)
             {
-	      errs()<<"tl_imp1\n";
+	      // errs()<<"tl_imp1\n";
               if (!option_tl_sparc)
                 BuildMI(MBB, MIi, DL, TII->get(AArch64::ADDXrs), x15)
                   .addReg(x15)
@@ -285,7 +284,7 @@ void TestZomTag::instrumentTagLoading(MachineBasicBlock &MBB, MachineBasicBlock:
 
           if (option_tl_pre)
             {
-	      errs() <<"@@@@tl_pre\n";
+	      // errs() <<"@@@@tl_pre\n";
               assert(mem.isReg());
 				
               if (!option_tl_sparc)
